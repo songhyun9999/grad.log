@@ -35,14 +35,32 @@
     <h1>GNN 기초 — 그래프 표현, 메시지 패싱, 대표 모델 수식</h1>
     <div class="meta">
       <time datetime="2026-07-11">2026-07-11</time>
-      <span>약 5분</span>
+      <span>약 7분</span>
       <span class="tag">GNN</span><span class="tag">기초</span>
     </div>
-    <p class="lede">노드·엣지를 수학적으로 어떻게 표현하는지부터, 모든 GNN의 공통 뼈대인 메시지 패싱, GCN·GraphSAGE·GAT·GIN의 갱신식까지.</p>
+    <p class="lede">인접 행렬·COO 그래프 표현부터 메시지 패싱 프레임워크, GCN·GraphSAGE·GAT·GIN의 갱신식까지.</p>
   </header>
   <article>
 
-<h2><span class="no">1</span>그래프의 수학적 표현</h2>
+<div class="toc">
+  <div class="toc-title">목차</div>
+  <ol>
+    <li><a href="#s1">1. 그래프의 수학적 표현</a></li>
+    <li><a href="#s2">2. 핵심 아이디어 — 메시지 패싱</a></li>
+    <li><a href="#s3">3. 대표 모델별 수식</a></li>
+    <li><a href="#s4">4. 엣지 특징까지 쓰는 일반형 — MPNN</a></li>
+    <li><a href="#s5">5. 최종 출력 — 태스크별 헤드</a></li>
+    <li><a href="#s6">6. 알아두면 좋은 한계</a></li>
+  </ol>
+</div>
+
+<p>소셜 그래프의 친구 관계, 분자의 원자 결합, 시스템 로그의 프로세스-파일 이벤트 — 세상 데이터의 상당수는 반듯한 표가 아니라 <strong>그래프</strong>다. 그런데 CNN은 격자(픽셀)를, RNN은 시퀀스(토큰)를 전제로 만들어졌다. 노드마다 이웃 수가 제각각이고 순서도 없는 그래프 위에서는 어떻게 학습을 할까?</p>
+
+<p>이 글은 그 답을 세 걸음으로 따라간다 — 그래프를 <strong>어떻게 표현</strong>하고, 모든 GNN의 공통 뼈대인 <strong>메시지 패싱</strong>이 무엇이며, 그 뼈대에 살을 붙인 <strong>대표 모델</strong>(GCN·GraphSAGE·GAT·GIN)들이 어떻게 갈라지는지.</p>
+
+<p>이야기를 끝까지 함께 따라갈 작은 그래프 하나를 정해 두자. 노드 4개(v₁~v₄), 엣지는 넷이다 — (v₁,v₂), (v₁,v₃), (v₂,v₃), (v₃,v₄). 특히 이웃을 셋이나 거느린 <strong>v₃</strong>를 주인공 삼아, 섹션마다 그가 어떻게 취급되는지 지켜보겠다.</p>
+
+<h2 id="s1"><span class="no">1</span>그래프의 수학적 표현</h2>
 <p>그래프는 \(G = (V, E)\)로 정의합니다.</p>
 <ul>
   <li>\(V\) : 노드(정점) 집합, \(|V| = n\)</li>
@@ -53,6 +71,8 @@
 <p>연결 구조를 \(n \times n\) 행렬 \(A\) 하나로 표현하는 방식입니다.</p>
 $$A_{ij} = \begin{cases} 1 & (v_i, v_j) \in E \\ 0 & \text{otherwise} \end{cases}$$
 <p>무방향 그래프면 \(A\)는 대칭이고, 방향 그래프면 비대칭입니다. 가중 그래프면 0/1 대신 가중치 \(w_{ij}\)가 들어갑니다.</p>
+
+<p>우리의 예시 그래프를 이 규칙으로 적으면 아래 행렬이 됩니다. v₃ 행(3번째 줄)에 1이 세 개 찍힌 게 보이나요 — v₃가 v₁·v₂·v₄와 이어져 있다는 뜻입니다.</p>
 
 <figure>
   <div class="fig-row">
@@ -85,8 +105,10 @@ $$A_{ij} = \begin{cases} 1 & (v_i, v_j) \in E \\ 0 & \text{otherwise} \end{cases
 
 <h3>엣지 리스트 / COO 형식</h3>
 <p>실제 라이브러리(PyTorch Geometric 등)에서 쓰는 방식으로, \(2 \times |E|\) 텐서에 (출발, 도착) 노드 인덱스 쌍을 나열합니다. 인접 행렬은 \(O(n^2)\) 메모리가 들어서 희소(sparse) 그래프엔 이쪽이 효율적입니다.</p>
+<p>같은 예시 그래프를 0-인덱스(v₁=0 … v₄=3)로 적으면 이렇게 됩니다.</p>
 <pre><code>edge_index = [[0, 0, 1, 2],    # source
-              [1, 2, 2, 0]]    # target</code></pre>
+              [1, 2, 2, 3]]    # target  → (v₁,v₂), (v₁,v₃), (v₂,v₃), (v₃,v₄)</code></pre>
+<p>무방향 그래프라면 각 엣지의 역방향 쌍(예: (1,0), (2,0), (2,1), (3,2))도 함께 넣어 양방향으로 채워 줍니다.</p>
 
 <h3>특징(feature) 행렬</h3>
 <ul>
@@ -94,7 +116,9 @@ $$A_{ij} = \begin{cases} 1 & (v_i, v_j) \in E \\ 0 & \text{otherwise} \end{cases
   <li><strong>엣지 특징</strong> \(E \in \mathbb{R}^{|E| \times d_e}\) — 엣지마다 속성 벡터 (예: 시스템콜 타입 read/write/exec)</li>
 </ul>
 
-<h2><span class="no">2</span>핵심 아이디어 — 메시지 패싱</h2>
+<p>그래프를 이렇게 행렬·텐서로 담았습니다. 그런데 이 구조 위에서 '학습'은 대체 어떻게 일어날까요?</p>
+
+<h2 id="s2"><span class="no">2</span>핵심 아이디어 — 메시지 패싱</h2>
 <p>거의 모든 GNN은 다음 프레임워크의 변형입니다. 레이어 \(k\)에서 각 노드가 <strong>이웃의 정보를 모아(aggregate) 자신의 표현을 갱신(update)</strong>합니다.</p>
 $$h_v^{(k)} = \text{UPDATE}^{(k)}\!\left( h_v^{(k-1)},\ \text{AGGREGATE}^{(k)}\!\left(\{ h_u^{(k-1)} : u \in \mathcal{N}(v) \}\right) \right)$$
 <ul>
@@ -102,6 +126,8 @@ $$h_v^{(k)} = \text{UPDATE}^{(k)}\!\left( h_v^{(k-1)},\ \text{AGGREGATE}^{(k)}\!
   <li>\(\mathcal{N}(v)\) : \(v\)의 이웃 노드 집합</li>
 </ul>
 <p>AGGREGATE는 이웃의 순서에 무관해야 하므로 <em class="term">순열 불변(permutation-invariant)</em> 함수여야 합니다 — sum, mean, max 등.</p>
+
+<p>우리 주인공 v₃로 돌아가 봅시다. 한 레이어에서 v₃는 이웃 v₁·v₂·v₄ <strong>셋의 메시지를 모아</strong> 자신의 임베딩을 새로 씁니다. 아래 그림은 이 장면을 일반화한 것으로, 이웃 u₁~u₄가 중심 노드 v로 정보를 흘려보냅니다 — v를 v₃, 그 이웃을 v₁·v₂·v₄로 바꿔 읽으면 됩니다.</p>
 
 <figure>
   <div class="fig-row">
@@ -136,9 +162,36 @@ $$h_v^{(k)} = \text{UPDATE}^{(k)}\!\left( h_v^{(k-1)},\ \text{AGGREGATE}^{(k)}\!
   <figcaption>한 레이어의 메시지 패싱 — 이웃 u₁…u₄의 임베딩이 v로 집계된다</figcaption>
 </figure>
 
-<div class="note"><strong>K-hop 수용 영역</strong> — 레이어를 \(K\)개 쌓으면 각 노드는 \(K\)-hop 이웃까지의 정보를 받습니다. 1레이어면 직접 이웃만, 2레이어면 이웃의 이웃까지. 이것이 노드의 수용 영역(receptive field)입니다.</div>
+<div class="note"><strong>K-hop 수용 영역</strong> — 레이어를 \(K\)개 쌓으면 각 노드는 \(K\)-hop 이웃까지의 정보를 받습니다. 1레이어면 직접 이웃만, 2레이어면 이웃의 이웃까지. 이것이 노드의 수용 영역(receptive field)입니다. 예컨대 v₄는 직접 이웃이 v₃ 하나뿐이지만, 2-hop이면 v₃를 거쳐 v₁·v₂까지 정보가 닿습니다.</div>
 
-<h2><span class="no">3</span>대표 모델별 수식</h2>
+<figure>
+  <div class="fig-row">
+    <svg width="420" height="300" viewBox="0 0 420 300" role="img" aria-label="K-hop 수용 영역: 레이어가 쌓일수록 더 먼 이웃까지 정보가 도달">
+      <circle cx="210" cy="150" r="125" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <circle cx="210" cy="150" r="70" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <g fill="var(--muted)" fill-opacity="0.4">
+        <circle cx="298.4" cy="61.6" r="11"/>
+        <circle cx="298.4" cy="238.4" r="11"/>
+        <circle cx="121.6" cy="238.4" r="11"/>
+        <circle cx="121.6" cy="61.6" r="11"/>
+      </g>
+      <g fill="var(--accent-soft)" stroke="var(--muted)" stroke-width="1.5">
+        <circle cx="210" cy="80" r="13"/>
+        <circle cx="270.6" cy="185" r="13"/>
+        <circle cx="149.4" cy="185" r="13"/>
+      </g>
+      <circle cx="210" cy="150" r="18" fill="var(--accent)"/>
+      <text x="210" y="151" fill="#14181d" font-size="13" text-anchor="middle" dominant-baseline="central">v</text>
+      <text x="210" y="225" fill="var(--ink)" font-size="12" text-anchor="middle">1-hop = 레이어 1</text>
+      <text x="210" y="290" fill="var(--ink)" font-size="12" text-anchor="middle">2-hop = 레이어 2</text>
+    </svg>
+  </div>
+  <figcaption>레이어를 쌓을수록 더 먼 이웃의 정보가 도달한다 — K레이어 = K-hop 수용 영역</figcaption>
+</figure>
+
+<p>뼈대는 이렇게 하나입니다. 그렇다면 모델들은 어디서 갈릴까요? 바로 AGGREGATE와 UPDATE 자리를 <strong>무엇으로 채우느냐</strong>입니다.</p>
+
+<h2 id="s3"><span class="no">3</span>대표 모델별 수식</h2>
 
 <h3>GCN — Graph Convolutional Network <span class="annot">(Kipf &amp; Welling 2017)</span></h3>
 $$H^{(k)} = \sigma\!\left( \tilde{D}^{-1/2} \tilde{A} \tilde{D}^{-1/2} H^{(k-1)} W^{(k)} \right)$$
@@ -151,27 +204,69 @@ $$H^{(k)} = \sigma\!\left( \tilde{D}^{-1/2} \tilde{A} \tilde{D}^{-1/2} H^{(k-1)}
 <p>노드 하나의 관점으로 풀면:</p>
 $$h_v^{(k)} = \sigma\!\left( \sum_{u \in \mathcal{N}(v) \cup \{v\}} \frac{1}{\sqrt{d_u d_v}}\, W^{(k)} h_u^{(k-1)} \right)$$
 
+<p>예시에 대입하면 대칭 정규화가 손에 잡힙니다. v₃(차수 3 + 자기루프 = 4)와 v₄(차수 1 + 자기루프 = 2) 사이 엣지의 가중치는 \(1/\sqrt{4 \cdot 2}\)입니다 — 이웃이 많은 v₃ 쪽 영향이 자동으로 눌려, 차수가 큰 노드가 판을 독식하지 못합니다.</p>
+
+<p>GCN은 모든 이웃을 다 받아들입니다. 그런데 이웃이 수백, 수천 개면 어떻게 될까요?</p>
+
 <h3>GraphSAGE <span class="annot">(Hamilton et al. 2017)</span></h3>
 <p>이웃을 전부 쓰지 않고 <strong>샘플링</strong>해서 대규모 그래프로 확장합니다. 자기 표현과 이웃 집계를 이어붙이는(concat, \(\|\)) 것이 특징:</p>
 $$h_v^{(k)} = \sigma\!\left( W^{(k)} \cdot \left[\, h_v^{(k-1)} \,\|\, \text{AGG}\!\left(\{ h_u^{(k-1)},\ u \in \mathcal{N}(v) \}\right) \right] \right)$$
 <p>AGG는 mean, max-pooling, LSTM 등. 학습 때 못 본 노드에도 적용 가능한 <em class="term">inductive</em> 학습이 가능해서, 새 노드가 계속 생기는 환경(provenance 그래프 같은)에 적합합니다.</p>
 
+<p>이웃 수는 이렇게 다뤘습니다. 그런데 v₃에게 v₁·v₂·v₄가 정말 <strong>똑같이</strong> 중요할까요?</p>
+
 <h3>GAT — Graph Attention Network <span class="annot">(Veličković et al. 2018)</span></h3>
+
+<figure>
+  <div class="fig-row">
+    <svg width="420" height="240" viewBox="0 0 420 240" role="img" aria-label="GAT attention: 이웃마다 다른 중요도 α로 가중">
+      <defs>
+        <marker id="arrGat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+      <line x1="75" y1="45" x2="322" y2="108" stroke="var(--accent)" stroke-width="5" marker-end="url(#arrGat)"/>
+      <line x1="75" y1="120" x2="320" y2="120" stroke="var(--accent)" stroke-width="3" marker-end="url(#arrGat)"/>
+      <line x1="75" y1="195" x2="322" y2="132" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrGat)"/>
+      <text x="185" y="62" fill="var(--ink)" font-size="12" text-anchor="middle">α=0.6</text>
+      <text x="185" y="112" fill="var(--ink)" font-size="12" text-anchor="middle">α=0.3</text>
+      <text x="185" y="180" fill="var(--ink)" font-size="12" text-anchor="middle">α=0.1</text>
+      <g fill="var(--muted)">
+        <circle cx="60" cy="40" r="15"/>
+        <circle cx="60" cy="120" r="15"/>
+        <circle cx="60" cy="200" r="15"/>
+      </g>
+      <circle cx="340" cy="120" r="20" fill="var(--accent)"/>
+      <g fill="#14181d" font-size="13" text-anchor="middle" dominant-baseline="central">
+        <text x="60" y="41">v₁</text>
+        <text x="60" y="121">v₂</text>
+        <text x="60" y="201">v₄</text>
+        <text x="340" y="121">v₃</text>
+      </g>
+    </svg>
+  </div>
+  <figcaption>GAT는 이웃마다 중요도 α를 학습해 다르게 가중한다 (α 값은 설명용 예시)</figcaption>
+</figure>
+
 <p>이웃마다 중요도 \(\alpha_{vu}\)를 학습합니다 — "이웃 \(u\)가 \(v\)에게 얼마나 중요한가"를 softmax로 정규화한 값:</p>
 $$\alpha_{vu} = \frac{\exp\!\left(\text{LeakyReLU}\!\left(a^\top [W h_v \,\|\, W h_u]\right)\right)}{\sum_{u' \in \mathcal{N}(v)} \exp\!\left(\text{LeakyReLU}\!\left(a^\top [W h_v \,\|\, W h_{u'}]\right)\right)}$$
 $$h_v^{(k)} = \sigma\!\left( \sum_{u \in \mathcal{N}(v)} \alpha_{vu}\, W h_u^{(k-1)} \right)$$
 
+<p>v₃ 관점에서 보면, GCN이 세 이웃을 차수로만 눌렀던 것과 달리 GAT는 v₁·v₂·v₄에 <strong>서로 다른 \(\alpha\)를 배분</strong>합니다 — 위 그림처럼 어떤 이웃엔 굵은 가중치를, 어떤 이웃엔 얇은 가중치를 학습으로 정하는 것입니다.</p>
+
+<p>이제 중요도까지 다뤘습니다. 그렇다면 집계 함수 자체 — sum·mean·max 중에서는 뭐가 제일 강력할까요?</p>
+
 <h3>GIN — Graph Isomorphism Network <span class="annot">(Xu et al. 2019)</span></h3>
 <p>그래프 구조 구별력이 이론적으로 가장 강한(Weisfeiler–Lehman test 수준) 모델:</p>
 $$h_v^{(k)} = \text{MLP}^{(k)}\!\left( (1 + \epsilon^{(k)}) \cdot h_v^{(k-1)} + \sum_{u \in \mathcal{N}(v)} h_u^{(k-1)} \right)$$
-<p>mean/max가 아닌 <strong>sum 집계</strong>가 핵심 — sum이어야 이웃의 "개수" 정보가 보존되어 서로 다른 구조를 구별할 수 있습니다.</p>
+<p>mean/max가 아닌 <strong>sum 집계</strong>가 핵심 — sum이어야 이웃의 "개수" 정보가 보존되어 서로 다른 구조를 구별할 수 있습니다. v₃로 보면, mean이라면 이웃 셋이 평균으로 뭉개져 이웃 수 3이 사라지지만, sum이면 v₃가 이웃을 <strong>셋</strong> 가졌다는 사실이 그대로 남습니다.</p>
 
-<h2><span class="no">4</span>엣지 특징까지 쓰는 일반형 — MPNN</h2>
+<h2 id="s4"><span class="no">4</span>엣지 특징까지 쓰는 일반형 — MPNN</h2>
 <p>엣지에 속성이 있으면(provenance 그래프의 시스템콜 타입처럼) 메시지 함수에 엣지 특징 \(e_{uv}\)를 포함시킵니다:</p>
 $$m_v^{(k)} = \sum_{u \in \mathcal{N}(v)} M^{(k)}\!\left( h_v^{(k-1)}, h_u^{(k-1)}, e_{uv} \right), \qquad h_v^{(k)} = U^{(k)}\!\left( h_v^{(k-1)}, m_v^{(k)} \right)$$
 <p>이것이 MPNN(Message Passing Neural Network) 일반형이고, \(M\)과 \(U\)의 선택에 따라 위 모델들이 모두 특수 케이스로 나옵니다.</p>
 
-<h2><span class="no">5</span>최종 출력 — 태스크별 헤드</h2>
+<h2 id="s5"><span class="no">5</span>최종 출력 — 태스크별 헤드</h2>
 <p>\(K\)개 레이어를 통과한 임베딩 \(h_v^{(K)}\)를 태스크에 맞게 사용합니다.</p>
 <div class="tbl-wrap">
 <table>
@@ -194,7 +289,7 @@ $$m_v^{(k)} = \sum_{u \in \mathcal{N}(v)} M^{(k)}\!\left( h_v^{(k-1)}, h_u^{(k-1
 </table>
 </div>
 
-<h2><span class="no">6</span>알아두면 좋은 한계</h2>
+<h2 id="s6"><span class="no">6</span>알아두면 좋은 한계</h2>
 <ul>
   <li><strong>Over-smoothing</strong> — 레이어를 너무 깊게 쌓으면 모든 노드 임베딩이 비슷해져 구별력이 사라집니다. 그래서 GNN은 보통 2~4레이어로 얕게 씁니다.</li>
   <li><strong>이웃 폭발</strong> — hop 수가 늘면 수용 영역이 지수적으로 커져서, 대규모 그래프에서는 GraphSAGE식 샘플링이 필수가 됩니다.</li>
