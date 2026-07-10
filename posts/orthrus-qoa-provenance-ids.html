@@ -59,20 +59,14 @@
 
 <p>침입 탐지 시스템이 하루에 경보 수십만 개를 뱉으면, 분석가는 무엇을 하게 될까. 대부분은 아무것도 못 한다. 진짜 공격 노드 몇 개가 무관한 노드 수천~수십만 개에 파묻혀, 사람이 다 열어볼 수가 없기 때문이다. 이 "경보 피로(alert fatigue)"는 탐지율을 아무리 올려도 사라지지 않는 병목이다. ORTHRUS는 바로 이 지점을 문제로 삼는다 — 얼마나 잘 잡느냐가 아니라, 분석가가 실제로 몇 개를 들여다봐야 하느냐를 1급 목표로 끌어올린 논문이다.</p>
 
-<p><strong>저자</strong>: Baoxiang Jiang, Tristan Bilot, Nour El Madhoun, Khaldoun Al Agha, Anis Zouaoui, Shahrear Iqbal, Xueyuan Han, Thomas Pasquier · <strong>원문</strong>: <a href="https://tfjmp.org/publications/2025-usenixsec.pdf">ORTHRUS: Achieving High Quality of Attribution in Provenance-based Intrusion Detection Systems</a> (USENIX Security 2025)</p>
+<p>Baoxiang Jiang, Tristan Bilot, Nour El Madhoun, Khaldoun Al Agha, Anis Zouaoui, Shahrear Iqbal, Xueyuan Han, Thomas Pasquier · USENIX Security 2025 · 원문: <a href="https://tfjmp.org/publications/2025-usenixsec.pdf">https://tfjmp.org/publications/2025-usenixsec.pdf</a></p>
+
+<p>이 글을 끝까지 하나의 장면으로 붙들고 가보자. 장악된 브라우저 <code>firefox</code>가 외부 C2 서버 <code>10.0.0.1:443</code>에 몰래 연결하고 <code>/etc/passwd</code>를 읽어 유출하는 공격이 있다고 하자. 이 <code>firefox</code>는 셸 <code>bash</code>가 띄운 자식 프로세스다. 앞으로 파이프라인의 모든 단계를, 이 하나의 공격이 시스템을 어떻게 통과하는지로 되짚을 것이다. (논문의 실제 평가 데이터가 아니라 이해를 돕기 위한 가상 예시다 — 논문 수치와 혼동하지 말자.)</p>
 
 <h2 id="tldr">TL;DR</h2>
-<ul>
-  <li>프로비넌스 IDS(PIDS)는 <strong>탐지는 잘하지만 귀속 품질(QoA)이 낮다</strong> — 공격과 무관한 노드까지 수천~수십만 개를 경보해 분석가를 소진(alert fatigue)시킨다. ORTHRUS는 QoA를 1급 설계·평가 목표로 삼는다.</li>
-  <li>핵심 기여:
-    <ul>
-      <li><strong>경량 stateless 시간 GNN 인코더 + 엣지타입 재구성 디코더</strong>로 노드 단위 이상탐지(상태 메모리 없이 최근 N개 엣지만 샘플링 → Kairos 대비 인코더 메모리 ~1/3).</li>
-      <li><strong>자동 임계값 + 클러스터링 + 인과분석 재구성</strong>으로 검수 대상을 수십 개 "attack summary graph"로 압축.</li>
-      <li><strong>검수 노드를 5 자릿수(orders) 감소</strong>: E5-CADETS에서 ORTHRUS가 검수할 노드 12개 vs ThreaTrace ~3,104,109개(≈5 orders↓).</li>
-      <li><strong>엄밀한 노드 단위 GT(41~123개)를 새로 라벨링</strong>하고 precision·MCC로 재평가 — 이 기준에서 5개 baseline이 거의 전부 precision≈0.</li>
-    </ul>
-  </li>
-</ul>
+<p>한 문장으로 줄이면 이렇다. 프로비넌스 IDS(PIDS)는 <strong>탐지는 잘하지만 귀속 품질(QoA)이 낮다</strong>. 공격과 무관한 노드까지 수천~수십만 개를 경보해 분석가를 소진(alert fatigue)시키기 때문이다. ORTHRUS는 이 QoA를 1급 설계·평가 목표로 끌어올린다.</p>
+<p>핵심 기여는 네 갈래다. 첫째, <strong>경량 stateless 시간 GNN 인코더 + 엣지타입 재구성 디코더</strong>로 노드 단위 이상탐지를 한다 — 상태 메모리 없이 최근 N개 엣지만 샘플링해, Kairos 대비 인코더 메모리가 약 1/3이다. 둘째, <strong>자동 임계값 + 클러스터링 + 인과분석 재구성</strong>으로 검수 대상을 수십 개짜리 "attack summary graph"로 압축한다. 셋째, 그 결과 <strong>검수 노드를 5 자릿수(orders) 감소</strong>시킨다 — E5-CADETS에서 ORTHRUS가 검수할 노드는 12개인 데 반해 ThreaTrace는 약 3,104,109개로, 약 5 orders 차이다. 넷째, <strong>엄밀한 노드 단위 GT(41~123개)를 새로 라벨링</strong>하고 precision·MCC로 재평가하는데, 이 기준에서는 5개 baseline이 거의 전부 precision≈0으로 무너진다.</p>
+<p>한 가지 미리 짚어둘 것이 있다.</p>
 <div class="note warn"><strong>주의</strong> — 새 지표는 <strong>QoA(정성)+precision+MCC</strong>이며 "ADP"는 원문 지표명이 아니다(§5.1 이진 탐지를 가리키는 것으로 추정).</div>
 
 <div class="stat-row">
@@ -94,10 +88,9 @@
 </div>
 
 <h2 id="s1"><span class="no">1</span>문제 정의</h2>
-<p>먼저 이 시스템들이 무엇 위에서 도는지 짚자. PIDS는 OS가 남긴 실행 이력을 그래프로 보고 그 위에서 공격을 찾는다.</p>
-<ul>
-  <li><strong>대상</strong>: OS 실행 이력을 담은 프로비넌스 그래프(노드=프로세스/파일/netflow, 엣지=시스템콜 상호작용+타입+타임스탬프) 위의 침입 탐지·귀속.</li>
-</ul>
+<p>먼저 이 시스템들이 무엇 위에서 도는지 짚자. PIDS는 OS가 남긴 실행 이력을 그래프로 보고 그 위에서 공격을 찾는다. 구체적으로는 노드가 프로세스·파일·netflow이고, 엣지가 시스템콜 상호작용에 타입과 타임스탬프가 붙은 것인 <strong>프로비넌스 그래프</strong> 위에서 침입 탐지와 귀속을 수행한다.</p>
+
+<p>앞서 꺼낸 공격을 이 그래프 언어로 옮겨보자. <code>bash</code>가 <code>firefox</code>를 띄운 사건은 <code>bash→firefox</code>의 fork 엣지가 되고, <code>firefox</code>가 C2에 접속한 사건은 <code>firefox→10.0.0.1:443</code>의 connect 엣지, <code>/etc/passwd</code>를 읽은 사건은 <code>firefox→/etc/passwd</code>의 read 엣지가 된다. 아래 개념 그림이 정확히 이 시나리오다.</p>
 
 <figure>
   <div class="fig-row">
@@ -134,36 +127,19 @@
   <figcaption>프로비넌스 그래프 예시 — ● 프로세스, ◆ 넷플로우, ▭ 파일이 시스템콜 이벤트(타입+타임스탬프)로 연결된다</figcaption>
 </figure>
 
-<p>문제는 이 그래프 위에서 "잘 탐지하는 것"과 "잘 귀속하는 것"이 다르다는 데 있다.</p>
-<ul>
-  <li><strong>기존 PIDS의 공백 — 탐지≠귀속</strong>:
-    <ul>
-      <li>이상탐지 PIDS는 정확도는 높지만 <strong>공격 귀속 품질(QoA)이 낮아</strong> 무관한 노드까지 대량 경보한다.</li>
-      <li>근원 ①: 과거 평가전략(neighborhood 2-hop / batch / source)이 악성 노드를 <strong>수천~수십만 개로 과대추정</strong>한다.</li>
-      <li>근원 ②: 극심한 불균형(악성:정상 = 1:1만 ~ 1:100만)에서 <strong>accuracy·F1·AUC가 오도</strong>된다.</li>
-    </ul>
-  </li>
-  <li><strong>목표</strong>: 분석가가 실제로 조사해야 할 노드 수를 최소화하면서 모든 공격을 잡는, 귀속 품질 중심의 탐지.</li>
-</ul>
+<p>문제는 이 그래프 위에서 "잘 탐지하는 것"과 "잘 귀속하는 것"이 다르다는 데 있다. 이상탐지 PIDS는 정확도는 높지만 <strong>공격 귀속 품질(QoA)이 낮아</strong> 무관한 노드까지 대량으로 경보한다. 우리 시나리오라면, 정작 봐야 할 것은 <code>firefox</code>·connect·read 몇 개인데 그 주변 프로세스 수천 개가 함께 빨갛게 물드는 식이다.</p>
+
+<p>왜 이렇게 부풀까. 원인은 둘이다. 하나는 과거의 평가전략(neighborhood 2-hop / batch / source)이 악성 노드를 <strong>수천~수십만 개로 과대추정</strong>한다는 것이고, 다른 하나는 악성:정상 비율이 1:1만에서 1:100만에 이르는 극심한 불균형에서 <strong>accuracy·F1·AUC 같은 지표가 오도</strong>된다는 것이다. 그래서 ORTHRUS의 목표는 분명하다 — 분석가가 실제로 조사해야 할 노드 수를 최소화하면서 모든 공격을 잡는, 귀속 품질 중심의 탐지다.</p>
 
 <h2 id="s2"><span class="no">2</span>관련 연구와 차별점</h2>
-<p>ORTHRUS는 이 분야를 새로 연 게 아니라, 기존 방법 갈래를 QoA 렌즈로 다시 배치한다. 어디에 서 있는지부터 보자.</p>
+<p>ORTHRUS는 이 분야를 새로 연 게 아니라, 기존 방법 갈래를 QoA 렌즈로 다시 배치한다. 어디에 서 있는지부터 보자. 방법 갈래는 크게 세 계열로 나뉜다(출처: related-work 웹 수집 노트).</p>
 <ul>
-  <li><strong>방법 갈래</strong> (출처: related-work 웹 수집 노트):
-    <ul>
-      <li>TGN/state-memory 계열 — Kairos(2024 S&amp;P). ORTHRUS는 이를 <strong>stateless로 경량화</strong>.</li>
-      <li>정적 GNN 계열 — ThreaTrace(2022 TIFS, GraphSAGE), MAGIC(2024 USENIX, GAT masked AE), Flash(2024 S&amp;P, Word2vec+GNN).</li>
-      <li>시퀀스 AE 계열 — SIGL(2021 USENIX, Graph-LSTM).</li>
-    </ul>
-  </li>
-  <li><strong>차별점 3</strong>:
-    <ul>
-      <li>노드 단위 탐지 + 인과분석 공격 재구성(attack summary graph)을 결합한 <strong>최초 PIDS</strong>라고 주장.</li>
-      <li><strong>QoA/분석가 부담을 1급 설계·평가 목표로</strong> 다루는 사실상 유일한 연구(Kairos·Flash는 요약그래프로 부분 대응).</li>
-      <li>baseline 자체 보고 수치와 ORTHRUS 수치는 서로 다른 GT/평가전략 산물이라 <strong>직접 비교 불가</strong>.</li>
-    </ul>
-  </li>
+  <li>TGN/state-memory 계열 — Kairos(2024 S&amp;P). ORTHRUS는 이를 <strong>stateless로 경량화</strong>.</li>
+  <li>정적 GNN 계열 — ThreaTrace(2022 TIFS, GraphSAGE), MAGIC(2024 USENIX, GAT masked AE), Flash(2024 S&amp;P, Word2vec+GNN).</li>
+  <li>시퀀스 AE 계열 — SIGL(2021 USENIX, Graph-LSTM).</li>
 </ul>
+
+<p>이 지형 위에서 ORTHRUS가 내세우는 차별점은 세 가지다. 노드 단위 탐지와 인과분석 기반 공격 재구성(attack summary graph)을 결합한 <strong>최초의 PIDS</strong>라고 주장하고, <strong>QoA와 분석가 부담을 1급 설계·평가 목표로</strong> 다루는 사실상 유일한 연구라고 위치를 잡는다(Kairos·Flash는 요약그래프로 부분 대응했을 뿐이다). 그리고 세 번째가 미묘하다 — baseline이 자체 보고한 수치와 ORTHRUS의 수치는 서로 다른 GT·평가전략에서 나온 산물이라 <strong>직접 비교가 불가능</strong>하다는 점이다.</p>
 
 <p>이 마지막 차별점이 왜 중요한지는 아래 표가 보여준다. 같은 시스템이라도 "자기 평가전략"과 "ORTHRUS의 엄밀 평가"에서 전혀 다른 얼굴이 나온다.</p>
 
@@ -182,12 +158,9 @@
 <div class="note warn"><strong>직접 비교 불가(경고)</strong>: baseline 자체 수치(F1 0.93~0.99)는 neighborhood/batch/source 전략 + 각기 다른 GT의 산물이다. ORTHRUS의 precision/MCC(엄밀 노드 라벨)와 같은 축에서 비교하면 안 된다. "같은 엄밀 평가로 재측정하면 baseline precision이 0에 수렴"이 ORTHRUS의 핵심 결과다.</div>
 
 <h2 id="s3"><span class="no">3</span>핵심 아이디어 / 방법</h2>
-<p>그럼 ORTHRUS는 어떻게 검수 노드를 수천에서 수십으로 줄일까. 아이디어는 세 갈래로 나뉜다.</p>
-<ul>
-  <li><strong>직관 3갈래</strong>: ① 상태 메모리 없이 최근 N개 엣지만 stateless 샘플링하는 경량 GNN 인코더, ② 정상 데이터로 엣지 타입을 재구성하도록 자가지도 학습 → 추론 시 재구성 오차가 이상 점수, ③ 오차 큰 노드만 자동 임계+클러스터링으로 소수만 남기고 인과 의존성 분석으로 공격 경로 재구성. 노드 수를 수천 → 수십(GT 41~123)으로 줄여 QoA↑.</li>
-</ul>
+<p>그럼 ORTHRUS는 어떻게 검수 노드를 수천에서 수십으로 줄일까. 아이디어는 세 갈래다. ① 상태 메모리 없이 최근 N개 엣지만 stateless 샘플링하는 경량 GNN 인코더, ② 정상 데이터로 엣지 타입을 재구성하도록 자가지도 학습해 추론 시 재구성 오차를 이상 점수로 쓰는 디코더, ③ 오차 큰 노드만 자동 임계와 클러스터링으로 소수만 남기고 인과 의존성 분석으로 공격 경로를 재구성하는 것이다. 이 세 갈래가 함께 노드 수를 수천에서 수십(GT 41~123)으로 줄여 QoA를 끌어올린다.</p>
 
-<p>이 세 직관은 아래 5단계 파이프라인으로 구현된다. 핵심 기여는 ③(경량 stateless 시간 GNN)에 몰려 있다.</p>
+<p>이 세 직관은 아래 5단계 파이프라인으로 구현되며, 핵심 기여는 ③(경량 stateless 시간 GNN)에 몰려 있다.</p>
 
 <figure>
   <div class="fig-row">
@@ -253,76 +226,156 @@
 </figure>
 
 <h3>파이프라인 5단계</h3>
-<ul>
-  <li><strong>① 그래프 구성</strong>: 원시 로그(ETW/Linux Audit/CamFlow/eAudit) 파싱 → 3종 엔티티 + 이벤트 방향그래프. Causality Preserved Reduction으로 중복 엣지 프루닝(순서 보존; 세부는 인용 위임).</li>
-  <li><strong>② 엣지 특징화</strong>: 엣지 (u,v)에 5개 특징 concat → e_uv. 타입 one-hot(이벤트 t_uv, 엔티티 t_u·t_v) + 노드 속성(파일경로·명령·IP를 토큰화 후 Skip-gram Word2vec 임베딩 평균).</li>
-</ul>
+
+<p><strong>① 그래프 구성.</strong> 원시 로그(ETW/Linux Audit/CamFlow/eAudit)를 파싱해 3종 엔티티와 이벤트로 방향그래프를 만들고, Causality Preserved Reduction으로 중복 엣지를 프루닝한다(순서 보존; 세부는 인용 위임). 우리 시나리오에서는 <code>bash</code>·<code>firefox</code>·<code>/etc/passwd</code>·<code>10.0.0.1:443</code>이 노드가 되고 fork·connect·read가 엣지가 되어, §1의 그 작은 그래프가 그대로 만들어진다.</p>
+
+<p><strong>② 엣지 특징화.</strong> 엣지 (u,v)마다 5개 특징을 concat해 e_uv를 만든다. 이벤트 타입(t_uv)과 양 끝 엔티티 타입(t_u·t_v)의 one-hot에, 파일경로·명령·IP를 토큰화한 뒤 Skip-gram Word2vec으로 임베딩해 평균 낸 노드 속성이 더해진다. 시나리오로 보면 connect 엣지에는 <code>10.0.0.1:443</code>이라는 IP 토큰이, read 엣지에는 <code>/etc/passwd</code>라는 경로 토큰이 특징으로 실린다.</p>
+
+<p>노드 속성 임베딩은 토큰별 임베딩을 모아 만든다.</p>
 
 $$\mathbf{x}_v = \sum_{i=1}^{n} \mathbf{w}_i \tag{1}$$
 
-<div class="note warn"><strong>주의</strong> — 본문은 "평균"이라 하나 식(1)은 합 — 1/n 정규화 누락 추정, 원문 미해소.</div>
+<p>여기서 w_i는 노드 v를 이루는 i번째 토큰의 Word2vec 벡터다.</p>
 
-<ul>
-  <li><strong>③ 시간 그래프 학습</strong>:
-    <ul>
-      <li><strong>Stateless temporal sampling</strong> — v로 들어온 과거 엣지 \(S_t(v)=\{(u,v)\in E \mid t_{uv}&lt;t\}\) (식2) 중 최근 N개만 \(S_N(v)=\mathrm{SAMPLE}(S_t(v),N,T,t)\) (식3), N∈[10,20].
-        <ul>
-          <li><strong>Kairos와 핵심 차별점</strong> — 엔티티별 메모리 벡터를 저장하지 않아 메모리 ~1/3.</li>
-        </ul>
-      </li>
-      <li><strong>GNN 인코더</strong>(GraphTransformer 변형, Shi et al., z=32):</li>
-    </ul>
-  </li>
-</ul>
+<div class="note warn"><strong>주의</strong> — 본문은 "평균"이라 하나 식(1)은 합 — <strong>1/n 정규화 누락 추정, 원문 미해소</strong>.</div>
+
+<p><strong>③ 시간 그래프 학습.</strong> 이 단계가 핵심 기여다. 먼저 노드 v로 들어온 과거 엣지 집합을 시각 t 이전으로 자른다.</p>
+
+$$S_t(v)=\{(u,v)\in E \mid t_{uv}<t\} \tag{2}$$
+
+<p>그중 전부를 쓰지 않고 최근 N개만 샘플링한다(N∈[10,20]).</p>
+
+$$S_N(v)=\mathrm{SAMPLE}(S_t(v),N,T,t) \tag{3}$$
+
+<p>핵심은 엔티티별 메모리 벡터를 저장하지 않는다는 점이다 — 이 stateless 설계 덕에 메모리가 Kairos 대비 약 1/3로 줄어든다(<strong>Kairos와의 핵심 차별점</strong>).</p>
+
+<p>인코더는 GraphTransformer 변형(Shi et al., z=32)이다. 이웃 엣지마다 얼마나 주목할지 attention 가중치를 먼저 계산하고, 그 가중치로 이웃 정보를 모아 노드 표현 h_v를 만든다.</p>
 
 $$\alpha_{u,v} = \mathrm{softmax}\!\left(\frac{(\mathbf{W}_3\mathbf{x}_v)^\top(\mathbf{W}_4\mathbf{x}_u + \mathbf{W}_5\mathbf{e}_{uv})}{\sqrt{d}}\right) \tag{5}$$
 
 $$\mathbf{h}_v = \mathbf{W}_1\mathbf{x}_v + \sum_{(u,v)\in S_N} \alpha_{u,v}(\mathbf{W}_2\mathbf{x}_u + \mathbf{W}_5\mathbf{e}_{uv}) \tag{6}$$
 
-<p><strong>디코더</strong>(엣지 타입 재구성) — 정상 데이터 전 엣지에 L_uv 최소화, 추론 시 높은 L_uv가 이상 점수:</p>
+<p>식(5)의 α_{u,v}는 이웃 엣지 (u,v)의 정규화된 주목도이고, 식(6)의 h_v는 자기 특징(W_1 x_v)에 그 주목도로 가중한 이웃 합을 더한 최종 노드 표현이다.</p>
+
+<p>디코더는 두 노드 표현으로 그 사이 엣지 타입을 맞히도록 학습한다. 정상 데이터의 모든 엣지에서 손실 L_uv를 최소화하고, 추론 때 높은 L_uv가 곧 이상 점수가 된다.</p>
 
 $$\hat{\mathbf{y}}_{uv} = \sigma(\mathbf{W}_g[\mathbf{W}_s\mathbf{h}_u, \mathbf{W}_d\mathbf{h}_v]) \tag{7}$$
 
 $$L_{uv} = \mathrm{CE}(\hat{\mathbf{y}}_{uv}, \mathbf{y}_{uv}) \tag{8}$$
 
-<ul>
-  <li><strong>④ 이상탐지(2단계, 자동화)</strong>:
-    <ul>
-      <li><strong>Automatic Thresholding</strong> — 학습에 안 쓴 하루치 정상 validation의 최고 이상점수를 임계값으로 자동 설정, 초과 노드 = 의심.</li>
-      <li><strong>Outlier Clustering</strong> — 의심 노드에 K-means(K=2) → 고득점(악성)/저득점(benign anomaly) 분리, 후자 제외 → FP 감소.</li>
-    </ul>
-  </li>
-  <li><strong>⑤ 공격 재구성</strong>: 플래그 노드 p마다 15분 시간창 서브그래프 → DAG 변환 → backward(entry)/forward(exit) 추적. 세 점수(min-max 정규화):</li>
-</ul>
+<p>식(7)의 ŷ_uv는 예측한 엣지 타입 확률, 식(8)의 L_uv는 정답 타입 y_uv와의 교차엔트로피다. 우리 시나리오에서 정상 <code>firefox</code>는 저런 connect·read 엣지 패턴을 낸 적이 없으니, 디코더가 그 타입을 잘 못 맞혀 L_uv가 커지고 재구성 오차가 튄다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="640" height="220" viewBox="0 0 640 220" role="img" aria-label="노드 이상점수 분포와 2단계 탐지: benign 노드는 낮은 점수 영역에 몰려 있고, validation 최대 점수를 자동 임계값으로 삼아 이를 넘은 의심 노드를 K-means로 다시 나눠 저득점 benign anomaly는 제외하고 고득점만 악성으로 플래그한다">
+      <line x1="20" y1="180" x2="620" y2="180" stroke="var(--line)" stroke-width="1.5"/>
+      <text x="320" y="212" font-size="12" fill="var(--muted)" text-anchor="middle">노드 이상점수 →</text>
+
+      <line x1="260" y1="20" x2="260" y2="180" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <text x="260" y="14" font-size="11" fill="var(--warn)" text-anchor="middle">자동 임계값(validation 최대)</text>
+
+      <g fill="var(--muted)">
+        <circle cx="50" cy="150" r="4"/>
+        <circle cx="70" cy="165" r="4"/>
+        <circle cx="90" cy="145" r="4"/>
+        <circle cx="110" cy="160" r="4"/>
+        <circle cx="130" cy="175" r="4"/>
+        <circle cx="150" cy="140" r="4"/>
+        <circle cx="170" cy="158" r="4"/>
+        <circle cx="190" cy="168" r="4"/>
+        <circle cx="210" cy="148" r="4"/>
+      </g>
+      <text x="130" y="196" font-size="11" fill="var(--muted)" text-anchor="middle">benign (정상 다수)</text>
+
+      <g fill="var(--muted)">
+        <circle cx="290" cy="150" r="5"/>
+        <circle cx="310" cy="135" r="5"/>
+        <circle cx="330" cy="155" r="5"/>
+      </g>
+      <text x="310" y="196" font-size="11" fill="var(--muted)" text-anchor="middle">benign anomaly → 제외</text>
+
+      <g fill="var(--accent)">
+        <circle cx="430" cy="95" r="6"/>
+        <circle cx="470" cy="65" r="6"/>
+        <circle cx="510" cy="90" r="6"/>
+      </g>
+      <text x="470" y="45" font-size="11" fill="var(--accent)" text-anchor="middle">악성 → 플래그</text>
+    </svg>
+  </div>
+  <figcaption>2단계 이상탐지 — validation 최대점수를 임계값으로 쓰고, 넘은 노드를 K-means로 다시 걸러 FP를 줄인다</figcaption>
+</figure>
+
+<p><strong>④ 이상탐지(2단계, 자동화).</strong> 먼저 자동 임계값을 잡는다 — 학습에 쓰지 않은 하루치 정상 validation의 최고 이상점수를 임계값으로 자동 설정하고, 이를 초과한 노드를 의심 노드로 본다. 그다음 의심 노드에 K-means(K=2)를 돌려 고득점(악성)과 저득점(benign anomaly)으로 나누고 후자를 제외해 FP를 줄인다. 우리 시나리오라면 오차가 큰 <code>firefox</code> 노드가 임계값을 넘겨 의심에 오르고, 클러스터링에서 고득점 쪽에 남아 플래그된다.</p>
+
+<p><strong>⑤ 공격 재구성.</strong> 플래그된 노드 p마다 15분 시간창의 서브그래프를 잘라 DAG로 바꾼 뒤, backward로 진입점(entry)을, forward로 유출점(exit)을 추적한다. 이때 세 점수를 min-max 정규화해 쓴다.</p>
+
+<p>먼저 노드의 팬아웃 성향을 본다 — 나가는 엣지가 들어오는 엣지보다 많을수록 확산의 중심일 가능성이 크다.</p>
 
 $$f_D(u) = \frac{\mathrm{OutDegree}(u)}{\mathrm{InDegree}(u)} \tag{9}$$
 
+<p>다음으로 노드에 붙은 엣지들의 평균 이상 점수를 본다.</p>
+
 $$f_A(u) = \frac{1}{|E_u|}\sum_{uv\in E_u} L_{uv} \tag{10}$$
+
+<p>마지막으로 경로 e 위 노드들의 두 점수를 합산해 그 경로의 임계도(criticality)를 매긴다.</p>
 
 $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$$
 
-<p>최고 f_C의 critical entry/exit 선택 → 두 dependency graph의 합집합을 attack summary graph로 보고. (L_uv는 §3 디코더 식8에서 온 값을 재사용)</p>
+<p>식(9) f_D는 out/in degree 비, 식(10) f_A는 노드 주변 엣지 손실의 평균(L_uv는 식8에서 온 값을 재사용), 식(11) f_C는 경로 위 정규화 두 점수 합의 평균이다. 최고 f_C의 critical entry·exit를 골라 두 dependency graph의 합집합을 attack summary graph로 보고한다. 시나리오에 대입하면, 플래그된 <code>firefox</code>에서 backward로 부모 <code>bash</code>(진입점)를, forward로 <code>10.0.0.1:443</code>(유출점)을 추적해 이 세 노드 중심의 요약 그래프가 남는다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="640" height="200" viewBox="0 0 640 200" role="img" aria-label="공격 경로 재구성: 플래그된 firefox 노드에서 backward로 진입점 bash를, forward로 유출점 10.0.0.1:443을 추적해 attack summary graph를 만든다">
+      <defs>
+        <marker id="asg-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+      <rect x="40" y="20" width="560" height="150" rx="12" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="56" y="38" font-size="11" fill="var(--muted)">attack summary graph (15분 시간창)</text>
+
+      <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#asg-arr)">
+        <line x1="296" y1="100" x2="154" y2="100"/>
+        <line x1="344" y1="100" x2="462" y2="100"/>
+      </g>
+      <text x="225" y="86" font-size="10.5" fill="var(--muted)" text-anchor="middle">backward</text>
+      <text x="403" y="86" font-size="10.5" fill="var(--muted)" text-anchor="middle">forward</text>
+
+      <circle cx="130" cy="100" r="22" fill="var(--muted)"/>
+      <text x="130" y="150" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="middle">bash (entry)</text>
+
+      <circle cx="320" cy="100" r="24" fill="var(--accent)"/>
+      <text x="320" y="150" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="middle">firefox (flagged)</text>
+
+      <path d="M 510 66 L 556 100 L 510 134 L 464 100 Z" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.6"/>
+      <text x="510" y="158" font-size="12" font-weight="600" fill="var(--ink)" text-anchor="middle">10.0.0.1:443 (exit)</text>
+    </svg>
+  </div>
+  <figcaption>플래그 노드에서 양방향 인과 추적으로 진입점→유출점 경로만 남긴 요약 그래프를 만든다</figcaption>
+</figure>
 
 <h3>평가 지표 (방법 관점)</h3>
-<ul>
-  <li><strong>QoA (Quality of Attribution)</strong> — 개념적 정의: IDS 출력 조사·근본원인 파악·오경보 기각에 드는 분석가 노력. <strong>형식 공식 없음</strong>. 대리 측정 = 검수 노드 수(작을수록↑) + precision.</li>
-  <li><strong>MCC(식12)</strong> — 불균형에 강건한 주 비교 지표. <strong>데이터셋 의존적이라 동일 데이터셋 내 비교만</strong> 가능. accuracy/AUC/F1은 불균형에서 과낙관적이라 배제.</li>
-  <li><strong>평가전략 형식화(Table 1)</strong> — Neighborhood/Batch/Source 셋 다 수천 노드 과대추정. ORTHRUS 수작업 GT는 41~123 노드.</li>
-</ul>
+<p>방법만큼 중요한 게 "무엇으로 재느냐"다. 그런데 이 지표를 얼마나 믿을 수 있을까 — ORTHRUS는 지표 자체를 새로 세운다.</p>
+
+<p>가장 앞에 오는 것이 <strong>QoA(Quality of Attribution)</strong>다. IDS 출력을 조사하고 근본 원인을 파악하고 오경보를 기각하는 데 드는 분석가의 노력으로 정의되는 개념인데, <strong>형식 공식은 없고</strong> 검수 노드 수(작을수록 좋음)와 precision으로 대리 측정한다. 주 비교 지표는 <strong>MCC(식12)</strong>로, 불균형에 강건하지만 <strong>데이터셋에 의존적이라 동일 데이터셋 안에서만</strong> 비교할 수 있다. accuracy·AUC·F1은 불균형에서 과낙관적이라 배제된다. 또한 평가전략을 형식화한 Table 1에서 Neighborhood·Batch·Source 셋 다 노드를 수천 개로 과대추정하는 반면, ORTHRUS의 수작업 GT는 41~123개에 그친다.</p>
+
 <div class="note warn"><strong>주의</strong> — <strong>"ADP"는 본문에 없음</strong>(grep 확인). 실제 지표는 QoA(개념)·precision·MCC(식12) + §5.1 이진 "detected" 여부.</div>
 
 <h2 id="s4"><span class="no">4</span>실험</h2>
-<p>이제 실제로 숫자가 그 약속을 지키는지 본다. 셋업부터.</p>
-<h3>셋업</h3>
+<p>이제 실제로 숫자가 그 약속을 지키는지 본다. 셋업부터 짚자.</p>
+
+<p>데이터셋은 DARPA TC Engagement 3 &amp; 5의 6개 서브셋(CADETS/THEIA/CLEARSCOPE)이며, 악성:정상이 약 1:1만에서 1:100만에 이르는 극심한 불균형을 갖는다. 이 가운데 하루치 benign을 validation으로 예약해 자동 임계값에 쓴다. 모델은 GraphTransformer 변형 attention GNN에 엣지타입 예측 디코더를 얹은 구조로, benign만으로 자가지도 학습한다(N=10~20, z=32, Word2vec x=32, lr=1e-4, node dropout 25%, 재구성 시간창 15분).</p>
+
+<p>비교 대상은 baseline 5종이다.</p>
 <ul>
-  <li><strong>데이터셋</strong>: DARPA TC Engagement 3 &amp; 5, 6개 서브셋(CADETS/THEIA/CLEARSCOPE). 극심한 불균형(악성 ~1:1만 ~ 1:100만). 하루치 benign을 validation으로 예약(자동 임계값용).</li>
-  <li><strong>모델</strong>: GraphTransformer 변형 attention GNN + 엣지타입 예측 디코더(benign만 자가지도). N=10~20, z=32, Word2vec x=32, lr=1e-4, node dropout 25%, 재구성 시간창 15분.</li>
-  <li><strong>베이스라인 5종</strong>: Kairos(S&amp;P'24), ThreaTrace(TIFS'22), SIGL(USENIX'21, 재구현), MAGIC(USENIX'24, GT 라벨 의존 임계), Flash(S&amp;P'24). 변형: ORTHRUS-full(전체) / ORTHRUS-ano(재구성 §4.5 제외).</li>
-  <li><strong>메트릭</strong>: precision(모든 공격 탐지 전제 최우선) + MCC(불균형 강건, 동일 데이터셋 내). F1/AUC/accuracy 배제.</li>
+  <li>Kairos(S&amp;P'24), ThreaTrace(TIFS'22), SIGL(USENIX'21, 재구현), MAGIC(USENIX'24, GT 라벨 의존 임계), Flash(S&amp;P'24).</li>
+  <li>ORTHRUS 자체 변형: ORTHRUS-full(전체) / ORTHRUS-ano(재구성 §4.5 제외).</li>
 </ul>
 
+<p>메트릭은 모든 공격 탐지를 전제로 한 precision을 최우선으로, 불균형에 강건한 MCC를 동일 데이터셋 안에서 함께 본다. F1·AUC·accuracy는 배제한다.</p>
+
 <h3>악성 노드 정의별 규모 (Table 1)</h3>
-<p>문제의 핵심 — "악성 노드"를 어떻게 정의하느냐에 따라 검수 규모가 세 자릿수씩 달라진다. ORTHRUS(Ours)의 수작업 GT는 압도적으로 작다.</p>
+<p>문제의 핵심은 여기 있다 — "악성 노드"를 어떻게 정의하느냐에 따라 검수 규모가 세 자릿수씩 달라진다. ORTHRUS(Ours)의 수작업 GT는 압도적으로 작다.</p>
 <div class="tbl-wrap">
 <table>
 <tr><th>Dataset</th><th>Total events</th><th>Neigh.</th><th>Batch</th><th>Source</th><th>Ours</th><th>Prevalence</th></tr>
@@ -336,14 +389,10 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
 </div>
 
 <h3>RQ1 — 모든 공격 탐지? (Table 3)</h3>
-<p>가장 먼저 물을 것: 이렇게 좁혀 놓고도 공격을 다 잡는가.</p>
-<ul>
-  <li>공격 노드 1개라도 잡으면 "탐지". ORTHRUS는 <strong>6개 서브셋 전 공격 탐지</strong>.</li>
-  <li><strong>Kairos·SIGL은 다수 데이터셋 0 검출</strong>(E3/E5-CADETS Kairos 0/3·0/2, SIGL 0/3·0/2). Flash는 E3-CLEARSCOPE 0/1 실패.</li>
-</ul>
+<p>가장 먼저 물을 것은 이것이다. 이렇게 좁혀 놓고도 공격을 다 잡는가. ORTHRUS는 공격 노드를 1개라도 잡으면 "탐지"로 치는 정의 아래에서 <strong>6개 서브셋의 공격을 전부 탐지</strong>한다. 반면 <strong>Kairos·SIGL은 다수 데이터셋에서 0 검출</strong>이고(E3/E5-CADETS Kairos 0/3·0/2, SIGL 0/3·0/2), Flash는 E3-CLEARSCOPE에서 0/1로 실패한다.</p>
 
 <h3>RQ2 — 귀속 품질 (Table 4=E3, Table 5=E5, 노드 단위)</h3>
-<p>탐지는 됐으니, 이제 진짜 질문 — 잡은 것이 얼마나 깨끗한가(precision·MCC).</p>
+<p>탐지는 됐으니, 이제 진짜 질문이다 — 잡은 것이 얼마나 깨끗한가(precision·MCC).</p>
 <div class="tbl-wrap">
 <table>
 <tr><th>Dataset</th><th>System</th><th>TP</th><th>FP</th><th>Precision</th><th>MCC</th></tr>
@@ -362,40 +411,21 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
 </table>
 </div>
 
-<p>핵심: <strong>ORTHRUS가 전 데이터셋 precision·MCC 최고</strong>. ThreaTrace/MAGIC/Flash는 TP는 많으나 FP가 수만~수백만 → precision≈0. Kairos/SIGL은 FP가 적어도 공격을 거의 못 잡음.</p>
+<p>결론은 뚜렷하다. <strong>ORTHRUS가 전 데이터셋에서 precision·MCC 최고</strong>다. ThreaTrace·MAGIC·Flash는 TP는 많으나 FP가 수만에서 수백만이라 precision이 0에 수렴하고, Kairos·SIGL은 FP가 적어도 애초에 공격을 거의 못 잡는다.</p>
 
 <h3>검수 노드 감소 (핵심 정량)</h3>
-<p>논문 전체를 한 줄로 압축하면 이 숫자다 — 분석가가 열어볼 노드가 몇 개로 줄었나.</p>
-<ul>
-  <li><strong>(a) GT 라벨 규모(Table 1)</strong>: 기존 전략 수천~16.3만(E5-THEIA Neigh 162,714) → 41~123. 예) E5-CADETS Batch 717,783 → 123, E5-THEIA Neigh 162,714 → 69.</li>
-  <li><strong>(b) 실제 검수 대상(flagged=TP+FP)</strong>:
-    <ul>
-      <li>E3-CADETS ORTHRUS 48 vs ThreaTrace ~252,178(~5,250배↓) · MAGIC ~79,829.</li>
-      <li><strong>E5-CADETS ORTHRUS 12 vs ThreaTrace ~3,104,109 · MAGIC ~3,110,837 (~26만배, ≈5 orders↓)</strong>.</li>
-    </ul>
-  </li>
-</ul>
+<p>그래서 검수할 노드가 몇 개로 줄었을까. 논문 전체를 한 줄로 압축하면 바로 이 숫자다.</p>
+<p>GT 라벨 규모(Table 1)부터 보면, 기존 전략이 수천에서 16.3만(E5-THEIA Neigh 162,714)까지 부풀리던 것이 41~123으로 줄어든다. 예컨대 E5-CADETS Batch는 717,783에서 123으로, E5-THEIA Neigh는 162,714에서 69로 내려간다. 더 실감 나는 건 실제 검수 대상(flagged=TP+FP)이다. E3-CADETS에서 ORTHRUS는 48개인 데 반해 ThreaTrace는 약 252,178개(약 5,250배)이고 MAGIC은 약 79,829개다. 그리고 E5-CADETS에서는 <strong>ORTHRUS 12개 대 ThreaTrace 약 3,104,109개·MAGIC 약 3,110,837개로, 약 26만 배(약 5 orders) 차이</strong>가 난다. 우리 시나리오로 옮기면, 분석가는 이 공격을 두고 수백만 노드가 아니라 수십 개만 열어보면 된다.</p>
 <div class="note warn"><strong>주의</strong> — Table 1(GT 라벨 수)과 Table 4/5(flagged 수)는 <strong>성격이 달라 혼동 금지</strong>.</div>
 
 <h3>공격 경로 재구성 (full vs ano)</h3>
-<p>재구성(⑤)을 켜고 끄는 건 trade-off다. TP를 얻는 대신 약간의 FP를 감수한다.</p>
-<ul>
-  <li>재구성을 켜면 TP가 크게↑, 약간의 FP를 감수: E3-CADETS ano 10TP/0FP(MCC0.38) → full 25TP/23FP(MCC<strong>0.44</strong>); E3-THEIA ano 8TP/0FP → full 48TP/11FP(MCC<strong>0.57</strong>). 재구성은 선택적(analyst 필요 시).</li>
-</ul>
+<p>재구성(⑤)을 켜고 끄는 건 trade-off다. TP를 얻는 대신 약간의 FP를 감수한다. 재구성을 켜면 TP가 크게 늘고 FP가 조금 붙는데, E3-CADETS는 ano 10TP/0FP(MCC0.38)에서 full 25TP/23FP(MCC<strong>0.44</strong>)로, E3-THEIA는 ano 8TP/0FP에서 full 48TP/11FP(MCC<strong>0.57</strong>)로 바뀐다. 그래서 재구성은 분석가가 필요할 때 켜는 선택적 단계다.</p>
 
 <h3>Ablation (Table 6/7, E3/E5-THEIA)</h3>
-<p>어느 부품이 실제로 일을 하는가. 흥미롭게도 데이터셋 밀도에 따라 답이 갈린다.</p>
-<ul>
-  <li>Featurization(Word2vec): 소형 E3엔 미미, 조밀한 <strong>E5-THEIA엔 필수</strong>.</li>
-  <li>Clustering: E3엔 무영향, <strong>E5-THEIA엔 결정적</strong>(없으면 TP 2개).</li>
-  <li>Encoding(TGN 교체): 두 셋 모두 악화(FP 급증) + 메모리↑.</li>
-  <li>(Table 7 셀별 수치는 추출본 미포함 — <strong>미확보</strong>)</li>
-</ul>
+<p>어느 부품이 실제로 일을 하는가. 흥미롭게도 데이터셋 밀도에 따라 답이 갈린다. Featurization(Word2vec)은 소형 E3에서는 효과가 미미하지만 조밀한 <strong>E5-THEIA에서는 필수</strong>이고, Clustering도 E3에는 영향이 없다가 <strong>E5-THEIA에서는 결정적</strong>이다(없으면 TP가 2개로 주저앉는다). Encoding을 TGN으로 교체하면 두 셋 모두 악화되고(FP 급증) 메모리도 늘어난다. (Table 7 셀별 수치는 추출본에 포함되어 있지 않다 — <strong>미확보</strong>.)</p>
 
 <h3>하이퍼파라미터 (Fig.8, E3-CADETS)</h3>
-<ul>
-  <li>Word2vec x=32/64에서 10TP·0FP, 키우면 TP↓·FP↑. N=5는 0TP, 10≤N≤50에서 6~10TP. 튜닝 민감도 낮음을 주장(정확 수치 미확보).</li>
-</ul>
+<p>하이퍼파라미터 민감도는 낮다고 주장된다. Word2vec x=32/64에서 10TP·0FP가 나오고 더 키우면 TP가 줄고 FP가 는다. 샘플 크기 N은 5일 때 0TP지만 10≤N≤50 구간에서 6~10TP로 안정적이다(정확 수치 미확보).</p>
 
 <h3>오버헤드 (Table 10/11)</h3>
 <p>성능을 다 챙기면서도 가장 가볍다는 게 마지막 셀링 포인트다.</p>
@@ -412,27 +442,20 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
 </table>
 </div>
 
-<p><strong>ORTHRUS 최속 학습·최소 메모리</strong>(Kairos 대비 인코더 메모리 ~1/3). 테스트 시간은 데이터셋별 혼재(ThreaTrace가 최속인 경우 있음).</p>
+<p><strong>ORTHRUS는 학습이 가장 빠르고 메모리도 가장 적다</strong>(Kairos 대비 인코더 메모리 약 1/3). 다만 테스트 시간은 데이터셋별로 혼재되어 ThreaTrace가 더 빠른 경우도 있다.</p>
 
 <h3>미미크리 강건성 (Fig.9)</h3>
-<ul>
-  <li>Goyal et al.(NDSS'23) 회피공격으로 E3-CADETS에 1,000~5,000 엣지 주입해도 TP/FP 안정(정확 수치는 그림값 <strong>미확보</strong>).</li>
-</ul>
+<p>회피공격 강건성도 짚는다. Goyal et al.(NDSS'23)의 회피공격으로 E3-CADETS에 1,000~5,000 엣지를 주입해도 TP/FP가 안정적으로 유지된다(정확 수치는 그림값 <strong>미확보</strong>).</p>
 
 <h2 id="s5"><span class="no">5</span>한계 · 비판적 검토</h2>
 <p>수치는 인상적이지만, 그 수치가 어떻게 만들어졌는지를 뜯어보면 이야기가 복잡해진다. 먼저 맥락 하나를 짚어야 한다.</p>
 <div class="note warn"><strong>맥락 주의</strong>: 지목된 "USENIX ;login: 2025 재현성 비판"은 검색상 <strong>ORTHRUS 저자 본인(Bilot, Pasquier) 저작</strong>으로 확인 — 독립 제3자 감사가 아니다.</div>
 
 <h3>저자 명시 한계</h3>
-<ul>
-  <li><strong>FP가 악성 노드 1-hop 이웃에 몰림(§6)</strong> — GNN 메시지 패싱이 악성 신호를 이웃에 전파. E5-CLEARSCOPE ORTHRUS-ano FP 7개 중 5개가 공격 노드와 같은 IP netflow. "better FP mitigation remains open."</li>
-  <li><strong>캡처 메커니즘 의존/E5-CADETS 저성능(§6)</strong> — 캡처 시스템별 정보 누락(CADETS 경로 대부분 누락), DARPA 크래시로 인한 요소 누락 인정.</li>
-  <li><strong>개념 드리프트/재훈련 미평가(§6)</strong> — 필요성은 인정하나 데이터셋 부재로 future work.</li>
-  <li><strong>GT 보수적 누락(Appendix C)</strong> — 불확실 요소 배제 → 탐지 성능 과소평가 가능.</li>
-  <li><strong>MCC 데이터셋 의존성(§5.2)</strong> / <strong>Reconstruction 선택적·FP 증가(§5.5)</strong>.</li>
-</ul>
+<p>저자들이 스스로 인정한 부분부터 보자. 가장 큰 것은 <strong>FP가 악성 노드의 1-hop 이웃에 몰린다는 점(§6)</strong>이다 — GNN 메시지 패싱이 악성 신호를 이웃으로 전파하기 때문으로, E5-CLEARSCOPE ORTHRUS-ano의 FP 7개 중 5개가 공격 노드와 같은 IP netflow였고, 저자도 "better FP mitigation remains open"이라 적는다. 그 밖에도 캡처 메커니즘 의존과 E5-CADETS 저성능(§6)을 인정하는데, 캡처 시스템별로 정보가 누락되고(CADETS는 경로 대부분 누락) DARPA 크래시로 요소가 빠졌다는 것이다. 개념 드리프트와 재훈련은 필요성만 인정하고 데이터셋 부재로 future work로 미룬다(§6). GT를 보수적으로 누락시킨 탓에(Appendix C) 탐지 성능이 과소평가됐을 수 있고, MCC의 데이터셋 의존성(§5.2)과 재구성의 선택성·FP 증가(§5.5)도 함께 인정한다.</p>
 
 <h3>독립 발견 약점</h3>
+<p>저자가 말하지 않은, 그러나 결과 해석에 결정적인 지점들이다.</p>
 <ul>
   <li><strong>① QoA/평가지표 순환 위험(핵심)</strong> — ORTHRUS는 (a) 새 GT 라벨링(41~123 수작업) + (b) precision·MCC를 "옳은 지표"로 규정 + (c) 그 지표에 최적화된 시스템 설계, 세 축 모두 저자 산물. baseline은 저자 새 라벨로 재채점("modifying only the final evaluation step"). <strong>QoA 실측(사용자 연구·시간 측정) 전무</strong> — 노드 수·precision으로 대체. GT는 단일 출처 수작업으로 inter-annotator agreement·독립 검증 없음.</li>
   <li><strong>② 모든 baseline precision 0.00 — 공정성 red flag</strong> — Table 4/5에서 5개 baseline이 거의 모든 데이터셋 precision 0.00, MCC≈0. 경쟁자가 예외 없이 완전 0인 벤치마크는 지표·라벨이 제안기법 쪽으로 구성됐을 가능성을 시사. baseline은 원래 neighborhood/batch로 보정됐는데 strict 라벨로 재채점+재튜닝됐고, MAGIC은 GT 기반 thresholding, SIGL은 재구현본 — 참담한 수치 일부는 프로토콜 산물일 수 있다(추정).</li>
@@ -444,34 +467,21 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
 </ul>
 
 <h3>재현·일반화 위협</h3>
-<ul>
-  <li><strong>DARPA TC(E3/E5) 단일 의존</strong> — 3 캡처 시스템, 스크립트 benign, 상대적으로 "시끄러운" 공격. 실기업·조용한 지속위협·조직 간 이질성 미검증.</li>
-  <li><strong>train/test가 같은 engagement·같은 호스트</strong>(Appendix A) — inductive를 주장하나 cross-host/cross-org 미평가.</li>
-  <li><strong>GT가 재현 병목</strong> — 저자 수작업(Zenodo 공개). baseline 수치는 재튜닝·재구현·GT thresholding 의존 → 독립 재현 시 달라질 여지.</li>
-</ul>
+<p>재현성 쪽에도 그늘이 있다. 평가가 DARPA TC(E3/E5)에 단일 의존하는데, 이 데이터는 캡처 시스템이 3종뿐이고 benign이 스크립트로 생성됐으며 공격이 상대적으로 "시끄럽다" — 실기업 환경, 조용한 지속위협, 조직 간 이질성은 검증되지 않았다. train/test가 같은 engagement·같은 호스트인 점도(Appendix A) 문제인데, inductive를 주장하면서 cross-host·cross-org는 평가하지 않는다. 무엇보다 GT 자체가 재현의 병목이다 — 저자 수작업(Zenodo 공개)에 기대고, baseline 수치는 재튜닝·재구현·GT thresholding에 의존하므로 독립 재현 시 달라질 여지가 크다.</p>
 
 <h2 id="s6"><span class="no">6</span>인용 가치 · 활용 메모</h2>
-<p>그래서 이 논문을 언제, 어떻게 쓰면 좋을까.</p>
+<p>그래서 이 논문을 언제, 어떻게 쓰면 좋을까. 쓸모는 독자에 따라 갈린다. PIDS·프로비넌스 이상탐지 연구자라면, 탐지 정확도가 아니라 <strong>분석가 검수 부담(QoA)</strong> 관점으로 문제를 재정의할 때 인용할 만하다. 불균형 보안 벤치마크를 설계하는 사람이라면 accuracy·F1·AUC 대신 <strong>precision·MCC + 검수 노드 수</strong> 프레이밍의 근거로 삼을 수 있고, GNN 기반 탐지 실무자라면 stateless temporal sampling으로 <strong>메모리를 약 1/3로 절감</strong>하는 경량화 레퍼런스로 볼 수 있다.</p>
+
+<div class="note warn"><strong>인용 시 주의</strong> — baseline precision≈0 결과는 <strong>엄밀 라벨 재채점의 산물</strong>이므로 "기존 시스템이 무용하다"로 오독하면 안 된다 — 원 논문들의 자체 F1(0.93~0.99)과는 다른 평가 축이다.</div>
+
+<p>여기서 자연스럽게 후속 연구 거리가 나온다.</p>
 <ul>
-  <li><strong>누가/언제</strong>:
-    <ul>
-      <li>PIDS·프로비넌스 이상탐지 연구자 — 탐지 정확도가 아니라 <strong>분석가 검수 부담(QoA)</strong> 관점으로 문제를 재정의할 때 인용.</li>
-      <li>불균형 보안 벤치마크 설계자 — accuracy/F1/AUC 대신 <strong>precision·MCC + 검수 노드 수</strong> 프레이밍의 근거로.</li>
-      <li>GNN 기반 탐지 실무자 — stateless temporal sampling으로 <strong>메모리 절감(~1/3)</strong>하는 경량화 레퍼런스.</li>
-    </ul>
-  </li>
+  <li>QoA를 노드 수 대신 <strong>실제 분석가 시간·사용자 연구</strong>로 실측.</li>
+  <li>GT에 대한 inter-annotator agreement·독립 재라벨링으로 벤치마크 편향 검증.</li>
+  <li>attack summary graph의 <strong>precision/recall 정량 평가</strong>와 FP 시드 강건성 실험.</li>
+  <li>손실을 아는 적응형 공격자 하에서의 강건성, cross-host/cross-org 일반화, 개념 드리프트 재훈련 평가.</li>
 </ul>
-<div class="note warn"><strong>인용 시 주의</strong> — baseline precision≈0 결과는 <strong>엄밀 라벨 재채점의 산물</strong>이므로 "기존 시스템이 무용하다"로 오독하지 말 것 — 원 논문들의 자체 F1(0.93~0.99)과는 다른 평가 축이다.</div>
-<ul>
-  <li><strong>후속 아이디어</strong>:
-    <ul>
-      <li>QoA를 노드 수 대신 <strong>실제 분석가 시간·사용자 연구</strong>로 실측.</li>
-      <li>GT에 대한 inter-annotator agreement·독립 재라벨링으로 벤치마크 편향 검증.</li>
-      <li>attack summary graph의 <strong>precision/recall 정량 평가</strong>와 FP 시드 강건성 실험.</li>
-      <li>손실을 아는 적응형 공격자 하에서의 강건성, cross-host/cross-org 일반화, 개념 드리프트 재훈련 평가.</li>
-    </ul>
-  </li>
-</ul>
+
 <p>정리하면, ORTHRUS의 진짜 기여는 "더 잘 잡는 모델"이 아니라 <strong>"무엇을 재야 하는가"라는 질문 자체를 바꾼 것</strong>이다. 검수 노드를 5자릿수 줄인 숫자는 강력하지만, 그 숫자가 저자가 세운 지표·라벨 위에서 나왔다는 점은 인용자가 늘 함께 짊어져야 할 각주다.</p>
 
 <details id="s7">
