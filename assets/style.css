@@ -135,6 +135,59 @@ p code, li code, td code {
   background: var(--code-bg); border-radius: 4px; padding: 1px 5px; font-size: .88em;
 }
 
+/* ---------- 목차 (긴 글 상단) ---------- */
+.toc {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 20px; margin: 20px 0; font-size: 14.5px;
+}
+.toc .toc-title {
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin-bottom: 6px;
+}
+.toc ol { margin: 0; padding-left: 20px; }
+.toc li { margin: 2px 0; }
+.toc a { color: var(--ink); }
+.toc a:hover { color: var(--accent); }
+
+/* ---------- 히어로 스탯 카드 (핵심 수치 1~3개) ---------- */
+.stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.stat {
+  flex: 1 1 180px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px 18px;
+}
+.stat .stat-value {
+  font-size: 26px; font-weight: 800; color: var(--accent);
+  font-variant-numeric: tabular-nums; line-height: 1.2; letter-spacing: -.01em;
+}
+.stat .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.stat .stat-context { font-size: 12.5px; color: var(--muted); margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+
+/* ---------- 표 강조 셀 ---------- */
+td.hl { color: var(--accent); font-weight: 700; }
+tr.hl-row td { background: var(--accent-soft); }
+
+/* ---------- 접기 (부록성 섹션) ---------- */
+details {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 0 18px; margin: 16px 0;
+}
+details summary {
+  cursor: pointer; padding: 13px 0; font-weight: 700; font-size: 15.5px;
+  list-style-position: inside;
+}
+details summary:hover { color: var(--accent); }
+details[open] { padding-bottom: 12px; }
+
+/* ---------- 글 하단 이전/다음 ---------- */
+.post-nav {
+  display: flex; justify-content: space-between; gap: 12px;
+  margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line);
+  font-size: 14.5px;
+}
+.post-nav .prev, .post-nav .next { max-width: 48%; }
+.post-nav .next { margin-left: auto; text-align: right; }
+.post-nav .dir { display: block; font-size: 12px; color: var(--muted); letter-spacing: .08em; }
+
 /* ---------- 콜아웃 · 표 · 그림 ---------- */
 .note {
   background: var(--accent-soft); border-radius: 8px;

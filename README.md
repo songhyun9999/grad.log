@@ -31,3 +31,26 @@ posts/<slug>.html     글 본문 (템플릿 기반, 파일명은 영문 kebab-ca
    (`.note`, `.tbl-wrap`, `.fig-row`, `.tag`, `h2 > .no` 등)만 사용한다.
    부족하면 style.css에 클래스를 추가하고 이 README에 기록.
 4. 커밋 메시지: `post: <제목>` / 디자인 변경은 `design: …`.
+
+## 품질 규약 (긴 글 = 본문 h2가 5개 이상인 글)
+
+**발행 전 각색**: 노트/digest를 그대로 올리지 않는다. 재료는 먼저 블로그 글로 각색
+(도입부 — 왜 읽을 가치가 있는가 2~4문장, 독자 동선에 맞는 흐름, 그림 스펙 삽입)을
+거친 뒤 발행한다. 각색 담당은 생태계 `writing-agent`(kind=blog), 사실·수치는 verbatim.
+
+**구성 요소** (해당하면 적용):
+- **목차** — 긴 글은 lede 아래 `.toc`(섹션 앵커 링크 `<a href="#s1">`)를 둔다. h2에 `id` 부여.
+- **히어로 스탯** — 글의 결정적 수치 1~3개는 표에 묻지 말고 `.stat-row > .stat`
+  (`.stat-value` 숫자 / `.stat-label` 설명 / `.stat-context` 비교 맥락)로 TL;DR 근처에 노출.
+- **표 강조** — 결과 표에서 승부처 셀은 `td.hl`(또는 행 전체 `tr.hl-row`)로 하이라이트.
+- **접기** — 용어 사전·부록·참고문헌성 섹션은 `<details><summary>제목</summary>…</details>`로 접는다.
+- **이전/다음 글** — 글 하단에 `.post-nav`(`.dir` 방향 라벨 + 링크). 발행 시 인접 글과 상호 갱신.
+
+**그림 규약** (인라인 SVG, 색은 CSS 변수만 — `var(--accent)`/`var(--muted)`/`var(--line)`/`var(--surface)`):
+- **플로우 다이어그램** — 파이프라인·아키텍처 단계 설명용. 가로 박스(rx=8, fill=var(--surface),
+  stroke=var(--line)) + 화살표(stroke=var(--muted), marker). 강조 단계만 stroke=var(--accent).
+  라벨은 SVG `<text>`(fill=var(--ink), font-style 지정해 이탤릭 방지). `.fig-row`로 감싸고 `<figcaption>` 필수.
+- **개념 그림** — 도메인 구조(그래프·시스템 관계) 설명용. 노드 원/사각 + 엣지 선, 스타일은 위와 동일.
+- **수치 차트 주의** — 자릿수가 다른 극단 격차는 차트가 아니라 히어로 스탯으로(로그축 막대 금지).
+  다계열 색상 구분 차트 금지(단일 강조색 + 무채색 대비만), 모든 마크에 직접 라벨(색만으로 정보 전달 금지).
+- 모든 `<figure>`에 `<figcaption>`과 `<svg role="img" aria-label="…">` 필수. viewBox 사용(반응형).
