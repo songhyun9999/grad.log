@@ -24,9 +24,12 @@ posts/<slug>.html     글 본문 (템플릿 기반, 파일명은 영문 kebab-ca
 1. `templates/post.html`을 복사해 `posts/<slug>.html` 생성, 플레이스홀더 치환.
    - 수식: KaTeX 구분자 `$$…$$`(display) / `\(…\)`(inline). 수식 없는 글은 head의 KaTeX 3줄 삭제.
    - 그림: 인라인 SVG 권장, 색은 CSS 변수(`var(--accent)` 등) 사용.
-2. 새 `<li>` 항목을 **두 곳**의 `<!-- posts:start -->` 바로 아래에 추가 (최신 글이 위):
-   - `archive.html` — 전체 목록. 해가 바뀌면 목록 위에 `.year-head` + 새 `<ol>` 블록 신설.
-   - `index.html` — 최근 글. **5개 초과 시 가장 오래된 `<li>` 제거** (archive에는 유지).
+2. 새 항목을 **네 곳**에 추가 (최신 글이 위):
+   - `archive.html` `<!-- posts:start -->` — 전체 목록. 해가 바뀌면 목록 위에 `.year-head` + 새 `<ol>` 블록 신설.
+   - `index.html` `<!-- posts:start -->` — 최근 글. **5개 초과 시 가장 오래된 `<li>` 제거** (archive에는 유지).
+   - `feed.xml` `<!-- items:start -->` — RSS `<item>`(title/link/guid/pubDate RFC822/description=summary).
+   - `sitemap.xml` `<!-- posts:start -->` — `<url><loc>…</loc></url>`.
+2b. **읽기 시간**: 본문 기준 `한글자수/500 + 영단어수/200`(분, 반올림)을 meta의 `약 N분`에 기입.
 3. 커스텀 스타일은 새로 만들지 말 것 — `assets/style.css`의 기존 클래스
    (`.note`, `.tbl-wrap`, `.fig-row`, `.tag`, `h2 > .no` 등)만 사용한다.
    부족하면 style.css에 클래스를 추가하고 이 README에 기록.

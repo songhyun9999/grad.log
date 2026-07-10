@@ -280,6 +280,9 @@ svg text { font-family: var(--font-mono); font-style: normal; }
   display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }
 
+html { scroll-behavior: smooth; }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  html { scroll-behavior: auto; }
 }

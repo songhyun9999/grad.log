@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://songhyun9999.github.io/grad.log/</loc></url>
+  <url><loc>https://songhyun9999.github.io/grad.log/archive.html</loc></url>
+  <url><loc>https://songhyun9999.github.io/grad.log/about.html</loc></url>
+  <!-- posts:start (새 글은 이 줄 바로 아래에 추가) -->
+  <url><loc>https://songhyun9999.github.io/grad.log/posts/orthrus-qoa-provenance-ids.html</loc></url>
+  <url><loc>https://songhyun9999.github.io/grad.log/posts/gnn-basics.html</loc></url>
+  <!-- posts:end -->
+</urlset>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>grad.log</title>
+  <link>https://songhyun9999.github.io/grad.log/</link>
+  <description>보안 분야를 공부하는 대학원생의 학습 노트</description>
+  <language>ko</language>
+  <atom:link href="https://songhyun9999.github.io/grad.log/feed.xml" rel="self" type="application/rss+xml"/>
+  <!-- items:start (새 글은 이 줄 바로 아래에 추가, 최신이 위) -->
+  <item>
+    <title>ORTHRUS — Provenance IDS의 귀속 품질(QoA) 문제</title>
+    <link>https://songhyun9999.github.io/grad.log/posts/orthrus-qoa-provenance-ids.html</link>
+    <guid>https://songhyun9999.github.io/grad.log/posts/orthrus-qoa-provenance-ids.html</guid>
+    <pubDate>Sat, 11 Jul 2026 12:00:00 +0900</pubDate>
+    <description>탐지 정확도가 아니라 분석가 검수 부담(QoA)을 1급 목표로 재정의한 PIDS — stateless 시간 GNN으로 검수 노드를 5자릿수 줄이고, 엄밀 노드 라벨로 재평가하면 기존 5개 시스템의 precision이 0에 수렴함을 보인 논문.</description>
+  </item>
+  <item>
+    <title>GNN 기초 — 그래프 표현, 메시지 패싱, 대표 모델 수식</title>
+    <link>https://songhyun9999.github.io/grad.log/posts/gnn-basics.html</link>
+    <guid>https://songhyun9999.github.io/grad.log/posts/gnn-basics.html</guid>
+    <pubDate>Sat, 11 Jul 2026 10:00:00 +0900</pubDate>
+    <description>인접 행렬·COO 그래프 표현부터 메시지 패싱 프레임워크, GCN·GraphSAGE·GAT·GIN의 갱신식까지.</description>
+  </item>
+  <!-- items:end -->
+</channel>
+</rss>
