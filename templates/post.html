@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}} · study notes</title>
+  <meta name="description" content="{{SUMMARY}}">
+  <link rel="stylesheet" href="../assets/style.css">
+  <!-- KaTeX: 수식이 있는 글에서만 아래 3줄 유지, 없으면 삭제 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+</head>
+<body>
+<header class="site-header">
+  <a class="site-name" href="../index.html">study notes</a>
+  <span class="tagline">songhyun9999</span>
+</header>
+<main>
+  <header class="post-header">
+    <div class="eyebrow">{{EYEBROW}}</div>
+    <h1>{{TITLE}}</h1>
+    <div class="meta">
+      <time datetime="{{DATE}}">{{DATE}}</time>
+      {{TAGS}}<!-- <span class="tag">태그</span> 반복 -->
+    </div>
+    <p class="lede">{{SUMMARY}}</p>
+  </header>
+  <article>
+    {{CONTENT}}
+  </article>
+</main>
+<footer class="site-footer">
+  <span>© songhyun9999</span>
+  <a href="../index.html">← 목록으로</a>
+</footer>
+</body>
+</html>
