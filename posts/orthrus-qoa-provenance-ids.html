@@ -66,25 +66,29 @@
 
 <h2 id="tldr">TL;DR</h2>
 <p>한 문장으로 줄이면 이렇다. 프로비넌스 IDS(PIDS)는 <strong>탐지는 잘하지만 귀속 품질(QoA)이 낮다</strong>. 공격과 무관한 노드까지 수천~수십만 개를 경보해 분석가를 소진(alert fatigue)시키기 때문이다. ORTHRUS는 이 QoA를 1급 설계·평가 목표로 끌어올린다.</p>
-<p>핵심 기여는 네 갈래다. 첫째, <strong>경량 stateless 시간 GNN 인코더 + 엣지타입 재구성 디코더</strong>로 노드 단위 이상탐지를 한다 — 상태 메모리 없이 최근 N개 엣지만 샘플링해, Kairos 대비 인코더 메모리가 약 1/3이다. 둘째, <strong>자동 임계값 + 클러스터링 + 인과분석 재구성</strong>으로 검수 대상을 수십 개짜리 "attack summary graph"로 압축한다. 셋째, 그 결과 <strong>검수 노드를 5 자릿수(orders) 감소</strong>시킨다 — E5-CADETS에서 ORTHRUS가 검수할 노드는 12개인 데 반해 ThreaTrace는 약 3,104,109개로, 약 5 orders 차이다. 넷째, <strong>엄밀한 노드 단위 GT(41~123개)를 새로 라벨링</strong>하고 precision·MCC로 재평가하는데, 이 기준에서는 5개 baseline이 거의 전부 precision≈0으로 무너진다.</p>
+<p>핵심 기여는 네 갈래다.</p>
+<p>첫째, <strong>경량 stateless 시간 GNN 인코더 + 엣지타입 재구성 디코더</strong>로 노드 단위 이상탐지를 한다 — 상태 메모리 없이 최근 N개 엣지만 샘플링해, Kairos 대비 인코더 메모리가 약 1/3이다.</p>
+<p>둘째, <strong>자동 임계값 + 클러스터링 + 인과분석 재구성</strong>으로 검수 대상을 수십 개짜리 "attack summary graph"로 압축한다.</p>
+<p>셋째, 그 결과 <strong>검수 노드를 5 자릿수(orders) 감소</strong>시킨다 — E5-CADETS에서 ORTHRUS가 검수할 노드는 12개인 데 반해 ThreaTrace는 약 3,104,109개로, 약 5 orders 차이다.</p>
+<p>넷째, <strong>엄밀한 노드 단위 GT(41~123개)를 새로 라벨링</strong>하고 precision·MCC로 재평가하는데, 이 기준에서는 5개 baseline이 거의 전부 precision≈0으로 무너진다.</p>
 <p>한 가지 미리 짚어둘 것이 있다.</p>
 <div class="note warn"><strong>주의</strong> — 새 지표는 <strong>QoA(정성)+precision+MCC</strong>이며 "ADP"는 원문 지표명이 아니다(§5.1 이진 탐지를 가리키는 것으로 추정).</div>
 
 <div class="stat-row">
   <div class="stat">
     <div class="stat-value">12 <span class="vs">vs</span> <span class="dim">3,104,109</span></div>
-    <div class="stat-label">검수 노드 수 (E5-CADETS)</div>
-    <div class="stat-context">ORTHRUS vs ThreaTrace — ≈5 orders(약 26만 배) 감소</div>
+    <div class="stat-label">분석가가 열어봐야 할 경보 노드 수</div>
+    <div class="stat-context">같은 공격(E5-CADETS)에 대해 ORTHRUS는 12개, 기존 ThreaTrace는 약 310만 개를 경보 — 약 26만 배(≈5 orders) 압축</div>
   </div>
   <div class="stat">
     <div class="stat-value">6/6</div>
-    <div class="stat-label">공격 탐지 (전 서브셋)</div>
-    <div class="stat-context">Kairos·SIGL은 다수 데이터셋 0 검출</div>
+    <div class="stat-label">공격을 놓친 데이터셋 없음</div>
+    <div class="stat-context">검수량을 이렇게 줄이고도 6개 서브셋의 공격을 전부 탐지 — Kairos·SIGL은 다수 데이터셋에서 0건</div>
   </div>
   <div class="stat">
     <div class="stat-value">4min40 <span class="vs">/</span> 3.82GB</div>
-    <div class="stat-label">학습 시간·GPU 메모리 (E3-CADETS)</div>
-    <div class="stat-context">Kairos 22min49·MAGIC 13h18·Flash 10h33 대비 최속·최소</div>
+    <div class="stat-label">학습 시간과 GPU 메모리 (E3-CADETS)</div>
+    <div class="stat-context">비교 대상 중 가장 빠르고 가벼움 — Kairos 22min49 · MAGIC 13h18 · Flash 10h33</div>
   </div>
 </div>
 
