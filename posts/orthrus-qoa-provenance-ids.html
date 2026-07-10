@@ -10,6 +10,10 @@
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/orthrus-qoa-provenance-ids.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="../assets/style.css">
   <!-- KaTeX: 수식이 있는 글에서만 아래 3줄 유지, 없으면 삭제 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -69,11 +73,11 @@
     </ul>
   </li>
 </ul>
-<div class="note"><strong>주의</strong> — 새 지표는 <strong>QoA(정성)+precision+MCC</strong>이며 "ADP"는 원문 지표명이 아니다(§5.1 이진 탐지를 가리키는 것으로 추정).</div>
+<div class="note warn"><strong>주의</strong> — 새 지표는 <strong>QoA(정성)+precision+MCC</strong>이며 "ADP"는 원문 지표명이 아니다(§5.1 이진 탐지를 가리키는 것으로 추정).</div>
 
 <div class="stat-row">
   <div class="stat">
-    <div class="stat-value">12 vs 3,104,109</div>
+    <div class="stat-value">12 <span class="vs">vs</span> <span class="dim">3,104,109</span></div>
     <div class="stat-label">검수 노드 수 (E5-CADETS)</div>
     <div class="stat-context">ORTHRUS vs ThreaTrace — ≈5 orders(약 26만 배) 감소</div>
   </div>
@@ -83,7 +87,7 @@
     <div class="stat-context">Kairos·SIGL은 다수 데이터셋 0 검출</div>
   </div>
   <div class="stat">
-    <div class="stat-value">4min40 / 3.82GB</div>
+    <div class="stat-value">4min40 <span class="vs">/</span> 3.82GB</div>
     <div class="stat-label">학습 시간·GPU 메모리 (E3-CADETS)</div>
     <div class="stat-context">Kairos 22min49·MAGIC 13h18·Flash 10h33 대비 최속·최소</div>
   </div>
@@ -97,37 +101,37 @@
 
 <figure>
   <div class="fig-row">
-    <svg width="380" height="210" viewBox="0 0 380 210" role="img" aria-label="프로비넌스 그래프 예시: bash가 firefox를 fork하고, firefox가 10.0.0.1:443에 connect하고 /etc/passwd를 read함">
+    <svg width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="프로비넌스 그래프 예시: 프로세스 bash가 firefox를 fork하고, firefox가 넷플로우 10.0.0.1:443에 connect하고 파일 /etc/passwd를 read함">
       <defs>
-        <marker id="arrow-concept" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <marker id="pg-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
         </marker>
       </defs>
-      <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#arrow-concept)">
-        <line x1="67" y1="66" x2="171" y2="106"/>
-        <line x1="197" y1="103" x2="288" y2="64"/>
-        <line x1="197" y1="127" x2="288" y2="166"/>
+      <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#pg-arr)">
+        <line x1="90" y1="100" x2="170" y2="100"/>
+        <line x1="224" y1="86" x2="336" y2="55"/>
+        <line x1="224" y1="114" x2="340" y2="143"/>
       </g>
-      <g font-style="normal" font-size="11" fill="var(--ink)" text-anchor="middle">
-        <text x="105" y="73">fork</text>
-        <text x="250" y="73">connect</text>
-        <text x="250" y="158">read</text>
+      <g font-size="11.5" fill="var(--accent)" text-anchor="middle">
+        <text x="130" y="91">fork</text>
+        <text x="282" y="56">connect</text>
+        <text x="282" y="146">read</text>
       </g>
       <g fill="var(--accent)">
-        <circle cx="55" cy="55" r="14"/>
-        <circle cx="185" cy="115" r="14"/>
-        <circle cx="300" cy="55" r="14"/>
-        <circle cx="300" cy="175" r="14"/>
+        <circle cx="66" cy="100" r="23"/>
+        <circle cx="200" cy="100" r="26"/>
       </g>
-      <g font-style="normal" font-size="11" fill="var(--ink)" text-anchor="middle">
-        <text x="55" y="32">bash</text>
-        <text x="185" y="145">firefox</text>
-        <text x="300" y="30">10.0.0.1:443</text>
-        <text x="300" y="200">/etc/passwd</text>
+      <g font-size="11.5" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">
+        <text x="66" y="101">bash</text>
+        <text x="200" y="101">firefox</text>
       </g>
+      <path d="M 400 24 L 462 55 L 400 86 L 338 55 Z" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.6"/>
+      <text x="400" y="56" font-size="10" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">10.0.0.1:443</text>
+      <rect x="344" y="126" width="112" height="40" rx="7" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.6"/>
+      <text x="400" y="147" font-size="10" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">/etc/passwd</text>
     </svg>
   </div>
-  <figcaption>프로비넌스 그래프 예시 — 노드는 시스템 엔티티, 엣지는 시스템콜 이벤트(타입+타임스탬프)</figcaption>
+  <figcaption>프로비넌스 그래프 예시 — ● 프로세스, ◆ 넷플로우, ▭ 파일이 시스템콜 이벤트(타입+타임스탬프)로 연결된다</figcaption>
 </figure>
 
 <p>문제는 이 그래프 위에서 "잘 탐지하는 것"과 "잘 귀속하는 것"이 다르다는 데 있다.</p>
@@ -175,7 +179,7 @@
 </table>
 </div>
 
-<div class="note"><strong>직접 비교 불가(경고)</strong>: baseline 자체 수치(F1 0.93~0.99)는 neighborhood/batch/source 전략 + 각기 다른 GT의 산물이다. ORTHRUS의 precision/MCC(엄밀 노드 라벨)와 같은 축에서 비교하면 안 된다. "같은 엄밀 평가로 재측정하면 baseline precision이 0에 수렴"이 ORTHRUS의 핵심 결과다.</div>
+<div class="note warn"><strong>직접 비교 불가(경고)</strong>: baseline 자체 수치(F1 0.93~0.99)는 neighborhood/batch/source 전략 + 각기 다른 GT의 산물이다. ORTHRUS의 precision/MCC(엄밀 노드 라벨)와 같은 축에서 비교하면 안 된다. "같은 엄밀 평가로 재측정하면 baseline precision이 0에 수렴"이 ORTHRUS의 핵심 결과다.</div>
 
 <h2 id="s3"><span class="no">3</span>핵심 아이디어 / 방법</h2>
 <p>그럼 ORTHRUS는 어떻게 검수 노드를 수천에서 수십으로 줄일까. 아이디어는 세 갈래로 나뉜다.</p>
@@ -187,46 +191,60 @@
 
 <figure>
   <div class="fig-row">
-    <div style="overflow-x:auto">
-      <svg width="760" height="170" viewBox="0 0 760 170" role="img" aria-label="ORTHRUS 5단계 파이프라인: 그래프 구성, 엣지 특징화, 시간 그래프 학습(강조), 이상탐지, 공격 재구성">
+    <div style="overflow-x:auto; max-width:100%">
+      <svg width="900" height="160" viewBox="0 0 900 160" role="img" aria-label="ORTHRUS 5단계 파이프라인: 그래프 구성, 엣지 특징화, 시간 그래프 학습(강조), 이상탐지, 공격 재구성">
         <defs>
-          <marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <marker id="fl-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
           </marker>
         </defs>
-        <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#arrow-flow)">
-          <line x1="144" y1="77" x2="158" y2="77"/>
-          <line x1="294" y1="77" x2="308" y2="77"/>
-          <line x1="444" y1="77" x2="458" y2="77"/>
-          <line x1="594" y1="77" x2="608" y2="77"/>
+        <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#fl-arr)">
+          <line x1="168" y1="90" x2="188" y2="90"/>
+          <line x1="348" y1="90" x2="368" y2="90"/>
+          <line x1="528" y1="90" x2="548" y2="90"/>
+          <line x1="708" y1="90" x2="728" y2="90"/>
         </g>
-        <g fill="var(--surface)">
-          <rect x="8" y="25" width="136" height="104" rx="8" stroke="var(--line)" stroke-width="1.5"/>
-          <rect x="158" y="25" width="136" height="104" rx="8" stroke="var(--line)" stroke-width="1.5"/>
-          <rect x="308" y="25" width="136" height="104" rx="8" stroke="var(--accent)" stroke-width="2"/>
-          <rect x="458" y="25" width="136" height="104" rx="8" stroke="var(--line)" stroke-width="1.5"/>
-          <rect x="608" y="25" width="136" height="104" rx="8" stroke="var(--line)" stroke-width="1.5"/>
+        <g fill="var(--bg)">
+          <rect x="12" y="38" width="156" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
+          <rect x="192" y="38" width="156" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
+          <rect x="372" y="38" width="156" height="104" rx="12" stroke="var(--accent)" stroke-width="2"/>
+          <rect x="552" y="38" width="156" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
+          <rect x="732" y="38" width="156" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
         </g>
-        <g text-anchor="middle" font-style="normal">
-          <text x="76" y="53" font-size="12" font-weight="700" fill="var(--ink)">① 그래프 구성</text>
-          <text x="76" y="78" font-size="9" fill="var(--muted)">로그 파싱 ·</text>
-          <text x="76" y="93" font-size="9" fill="var(--muted)">CPR 프루닝</text>
+        <g>
+          <circle cx="42" cy="38" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+          <circle cx="222" cy="38" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+          <circle cx="402" cy="38" r="14" fill="var(--accent)"/>
+          <circle cx="582" cy="38" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+          <circle cx="762" cy="38" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+        </g>
+        <g text-anchor="middle" font-size="12.5" font-weight="600" dominant-baseline="central">
+          <text x="42" y="39" fill="var(--muted)">1</text>
+          <text x="222" y="39" fill="var(--muted)">2</text>
+          <text x="402" y="39" fill="#14181d">3</text>
+          <text x="582" y="39" fill="var(--muted)">4</text>
+          <text x="762" y="39" fill="var(--muted)">5</text>
+        </g>
+        <g text-anchor="middle">
+          <text x="90" y="78" font-size="13" font-weight="700" fill="var(--ink)">그래프 구성</text>
+          <text x="90" y="102" font-size="10.5" fill="var(--muted)">로그 파싱</text>
+          <text x="90" y="119" font-size="10.5" fill="var(--muted)">CPR 프루닝</text>
 
-          <text x="226" y="53" font-size="12" font-weight="700" fill="var(--ink)">② 엣지 특징화</text>
-          <text x="226" y="78" font-size="9" fill="var(--muted)">type one-hot +</text>
-          <text x="226" y="93" font-size="9" fill="var(--muted)">Word2vec</text>
+          <text x="270" y="78" font-size="13" font-weight="700" fill="var(--ink)">엣지 특징화</text>
+          <text x="270" y="102" font-size="10.5" fill="var(--muted)">type one-hot</text>
+          <text x="270" y="119" font-size="10.5" fill="var(--muted)">+ Word2vec</text>
 
-          <text x="376" y="53" font-size="12" font-weight="700" fill="var(--accent)">③ 시간 그래프 학습</text>
-          <text x="376" y="78" font-size="9" fill="var(--muted)">stateless GNN 인코더</text>
-          <text x="376" y="93" font-size="9" fill="var(--muted)">엣지타입 재구성 디코더</text>
+          <text x="450" y="78" font-size="13" font-weight="700" fill="var(--accent)">시간 그래프 학습</text>
+          <text x="450" y="102" font-size="10.5" fill="var(--muted)">stateless GNN 인코더</text>
+          <text x="450" y="119" font-size="10.5" fill="var(--muted)">엣지타입 재구성 디코더</text>
 
-          <text x="526" y="53" font-size="12" font-weight="700" fill="var(--ink)">④ 이상탐지</text>
-          <text x="526" y="78" font-size="9" fill="var(--muted)">자동 임계값 +</text>
-          <text x="526" y="93" font-size="9" fill="var(--muted)">K-means 클러스터링</text>
+          <text x="630" y="78" font-size="13" font-weight="700" fill="var(--ink)">이상탐지</text>
+          <text x="630" y="102" font-size="10.5" fill="var(--muted)">자동 임계값</text>
+          <text x="630" y="119" font-size="10.5" fill="var(--muted)">+ K-means 클러스터링</text>
 
-          <text x="676" y="53" font-size="12" font-weight="700" fill="var(--ink)">⑤ 공격 재구성</text>
-          <text x="676" y="78" font-size="9" fill="var(--muted)">인과 추적 →</text>
-          <text x="676" y="93" font-size="9" fill="var(--muted)">attack summary graph</text>
+          <text x="810" y="78" font-size="13" font-weight="700" fill="var(--ink)">공격 재구성</text>
+          <text x="810" y="102" font-size="10.5" fill="var(--muted)">인과 추적 →</text>
+          <text x="810" y="119" font-size="10.5" fill="var(--muted)">attack summary graph</text>
         </g>
       </svg>
     </div>
@@ -242,7 +260,7 @@
 
 $$\mathbf{x}_v = \sum_{i=1}^{n} \mathbf{w}_i \tag{1}$$
 
-<div class="note"><strong>주의</strong> — 본문은 "평균"이라 하나 식(1)은 합 — 1/n 정규화 누락 추정, 원문 미해소.</div>
+<div class="note warn"><strong>주의</strong> — 본문은 "평균"이라 하나 식(1)은 합 — 1/n 정규화 누락 추정, 원문 미해소.</div>
 
 <ul>
   <li><strong>③ 시간 그래프 학습</strong>:
@@ -291,7 +309,7 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
   <li><strong>MCC(식12)</strong> — 불균형에 강건한 주 비교 지표. <strong>데이터셋 의존적이라 동일 데이터셋 내 비교만</strong> 가능. accuracy/AUC/F1은 불균형에서 과낙관적이라 배제.</li>
   <li><strong>평가전략 형식화(Table 1)</strong> — Neighborhood/Batch/Source 셋 다 수천 노드 과대추정. ORTHRUS 수작업 GT는 41~123 노드.</li>
 </ul>
-<div class="note"><strong>주의</strong> — <strong>"ADP"는 본문에 없음</strong>(grep 확인). 실제 지표는 QoA(개념)·precision·MCC(식12) + §5.1 이진 "detected" 여부.</div>
+<div class="note warn"><strong>주의</strong> — <strong>"ADP"는 본문에 없음</strong>(grep 확인). 실제 지표는 QoA(개념)·precision·MCC(식12) + §5.1 이진 "detected" 여부.</div>
 
 <h2 id="s4"><span class="no">4</span>실험</h2>
 <p>이제 실제로 숫자가 그 약속을 지키는지 본다. 셋업부터.</p>
@@ -357,7 +375,7 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
     </ul>
   </li>
 </ul>
-<div class="note"><strong>주의</strong> — Table 1(GT 라벨 수)과 Table 4/5(flagged 수)는 <strong>성격이 달라 혼동 금지</strong>.</div>
+<div class="note warn"><strong>주의</strong> — Table 1(GT 라벨 수)과 Table 4/5(flagged 수)는 <strong>성격이 달라 혼동 금지</strong>.</div>
 
 <h3>공격 경로 재구성 (full vs ano)</h3>
 <p>재구성(⑤)을 켜고 끄는 건 trade-off다. TP를 얻는 대신 약간의 FP를 감수한다.</p>
@@ -403,7 +421,7 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
 
 <h2 id="s5"><span class="no">5</span>한계 · 비판적 검토</h2>
 <p>수치는 인상적이지만, 그 수치가 어떻게 만들어졌는지를 뜯어보면 이야기가 복잡해진다. 먼저 맥락 하나를 짚어야 한다.</p>
-<div class="note"><strong>맥락 주의</strong>: 지목된 "USENIX ;login: 2025 재현성 비판"은 검색상 <strong>ORTHRUS 저자 본인(Bilot, Pasquier) 저작</strong>으로 확인 — 독립 제3자 감사가 아니다.</div>
+<div class="note warn"><strong>맥락 주의</strong>: 지목된 "USENIX ;login: 2025 재현성 비판"은 검색상 <strong>ORTHRUS 저자 본인(Bilot, Pasquier) 저작</strong>으로 확인 — 독립 제3자 감사가 아니다.</div>
 
 <h3>저자 명시 한계</h3>
 <ul>
@@ -443,7 +461,7 @@ $$f_C(e) = \frac{1}{|V_e|}\sum_{u\in V_e}(\hat{f}_D(u) + \hat{f}_A(u)) \tag{11}$
     </ul>
   </li>
 </ul>
-<div class="note"><strong>인용 시 주의</strong> — baseline precision≈0 결과는 <strong>엄밀 라벨 재채점의 산물</strong>이므로 "기존 시스템이 무용하다"로 오독하지 말 것 — 원 논문들의 자체 F1(0.93~0.99)과는 다른 평가 축이다.</div>
+<div class="note warn"><strong>인용 시 주의</strong> — baseline precision≈0 결과는 <strong>엄밀 라벨 재채점의 산물</strong>이므로 "기존 시스템이 무용하다"로 오독하지 말 것 — 원 논문들의 자체 F1(0.93~0.99)과는 다른 평가 축이다.</div>
 <ul>
   <li><strong>후속 아이디어</strong>:
     <ul>

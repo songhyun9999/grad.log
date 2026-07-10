@@ -38,6 +38,12 @@ posts/<slug>.html     글 본문 (템플릿 기반, 파일명은 영문 kebab-ca
 (도입부 — 왜 읽을 가치가 있는가 2~4문장, 독자 동선에 맞는 흐름, 그림 스펙 삽입)을
 거친 뒤 발행한다. 각색 담당은 생태계 `writing-agent`(kind=blog), 사실·수치는 verbatim.
 
+**디자인 시스템 v2 참고**:
+- 서체: Pretendard Variable(본문) + JetBrains Mono(데이터·라벨·코드) — head의 CDN 4줄 필수(템플릿에 포함).
+- 콜아웃 2종: `.note`(인사이트, accent) / `.note warn`(주의·경고, 앰버) — "주의/경고/한계" 성격이면 warn.
+- 스탯 값 대비: `.stat-value` 안에서 주인공 숫자만 크게, 비교 대상은 `<span class="dim">`, 연결어는 `<span class="vs">`.
+- SVG 노드 도형 의미: ● 프로세스/주체(accent 원), ▭ 파일/산출물(rect), ◆ 네트워크(diamond) — provenance류 그림에서 일관 유지.
+
 **구성 요소** (해당하면 적용):
 - **목차** — 긴 글은 lede 아래 `.toc`(섹션 앵커 링크 `<a href="#s1">`)를 둔다. h2에 `id` 부여.
 - **히어로 스탯** — 글의 결정적 수치 1~3개는 표에 묻지 말고 `.stat-row > .stat`
