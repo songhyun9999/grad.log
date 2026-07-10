@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GNN 기초 — 그래프 표현, 메시지 패싱, 대표 모델 수식 · grad.log</title>
   <meta name="description" content="인접 행렬·COO 그래프 표현부터 메시지 패싱 프레임워크, GCN·GraphSAGE·GAT·GIN의 갱신식까지.">
+  <meta property="og:title" content="GNN 기초 — 그래프 표현, 메시지 패싱, 대표 모델 수식">
+  <meta property="og:description" content="인접 행렬·COO 그래프 표현부터 메시지 패싱 프레임워크, GCN·GraphSAGE·GAT·GIN의 갱신식까지.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/gnn-basics.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
   <link rel="stylesheet" href="../assets/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -14,7 +19,11 @@
 <body>
 <header class="site-header">
   <a class="site-name" href="../index.html">grad.log</a>
-  <span class="tagline">songhyun9999</span>
+  <nav class="site-nav">
+    <a href="../index.html">Home</a>
+    <a href="../archive.html">Archive</a>
+    <a href="../about.html">About</a>
+  </nav>
 </header>
 <main>
   <header class="post-header">
@@ -192,7 +201,7 @@ $$m_v^{(k)} = \sum_{u \in \mathcal{N}(v)} M^{(k)}\!\left( h_v^{(k-1)}, h_u^{(k-1
 </main>
 <footer class="site-footer">
   <span>© songhyun9999</span>
-  <a href="../index.html">← 목록으로</a>
+  <a href="../archive.html">← 전체 글</a>
 </footer>
 </body>
 </html>

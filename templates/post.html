@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{TITLE}} · grad.log</title>
   <meta name="description" content="{{SUMMARY}}">
+  <meta property="og:title" content="{{TITLE}}">
+  <meta property="og:description" content="{{SUMMARY}}">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/{{SLUG}}.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
   <link rel="stylesheet" href="../assets/style.css">
   <!-- KaTeX: 수식이 있는 글에서만 아래 3줄 유지, 없으면 삭제 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -15,7 +20,11 @@
 <body>
 <header class="site-header">
   <a class="site-name" href="../index.html">grad.log</a>
-  <span class="tagline">songhyun9999</span>
+  <nav class="site-nav">
+    <a href="../index.html">Home</a>
+    <a href="../archive.html">Archive</a>
+    <a href="../about.html">About</a>
+  </nav>
 </header>
 <main>
   <header class="post-header">
@@ -33,7 +42,7 @@
 </main>
 <footer class="site-footer">
   <span>© songhyun9999</span>
-  <a href="../index.html">← 목록으로</a>
+  <a href="../archive.html">← 전체 글</a>
 </footer>
 </body>
 </html>
