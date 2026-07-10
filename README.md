@@ -1,4 +1,4 @@
-# study notes — songhyun9999.github.io
+# grad.log — 학습 노트 블로그 (songhyun9999.github.io/grad.log)
 
 공부한 것을 수식·그림과 함께 정리해 쌓아두는 개인 학습 노트 블로그.
 GitHub Pages가 `main` 브랜치 루트를 그대로 서빙한다 (빌드 없음, `.nojekyll`).
