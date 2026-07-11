@@ -15,6 +15,7 @@ about.html            소개 페이지
 assets/style.css      공용 디자인 시스템 — 모든 페이지가 이것 하나만 사용
 templates/post.html   포스트 템플릿 ({{TITLE}}, {{SLUG}} 등 플레이스홀더)
 posts/<slug>.html     글 본문 (템플릿 기반, 파일명은 영문 kebab-case)
+tools/check_post.py   발행 전 계약 검증기 (아래 규약 5)
 ```
 
 모든 페이지 공통: 상단 내비게이션(Home / Archive / About), 🎓 파비콘, og 메타.
@@ -30,10 +31,16 @@ posts/<slug>.html     글 본문 (템플릿 기반, 파일명은 영문 kebab-ca
    - `feed.xml` `<!-- items:start -->` — RSS `<item>`(title/link/guid/pubDate RFC822/description=summary).
    - `sitemap.xml` `<!-- posts:start -->` — `<url><loc>…</loc></url>`.
 2b. **읽기 시간**: 본문 기준 `한글자수/500 + 영단어수/200`(분, 반올림)을 meta의 `약 N분`에 기입.
+   직접 세지 말고 `tools/check_post.py`가 출력하는 계산값을 쓴다.
 3. 커스텀 스타일은 새로 만들지 말 것 — `assets/style.css`의 기존 클래스
    (`.note`, `.tbl-wrap`, `.fig-row`, `.tag`, `h2 > .no` 등)만 사용한다.
    부족하면 style.css에 클래스를 추가하고 이 README에 기록.
-4. 커밋 메시지: `post: <제목>` / 디자인 변경은 `design: …`.
+4. **post-nav 상호 갱신**: 새 글의 "이전 글"을 기존 최신 글로 연결하고,
+   기존 최신 글의 "다음 글"을 새 글로 갱신한다 (새 글만 정상인 반쪽 내비 금지).
+5. **발행 전 검증**: `python tools/check_post.py <slug>` 실행 — 플레이스홀더·KaTeX 일관성·
+   목록 4곳 반영·index 5개 제한·RFC822 pubDate·읽기 시간·그림 접근성(figcaption/aria-label)·
+   og:url을 기계 검사한다. **전부 PASS일 때만 push**.
+6. 커밋 메시지: `post: <제목>` / 디자인 변경은 `design: …`.
 
 ## 품질 규약 (긴 글 = 본문 h2가 5개 이상인 글)
 
