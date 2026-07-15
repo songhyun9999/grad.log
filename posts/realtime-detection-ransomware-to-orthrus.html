@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>랜섬웨어 I/O 한 조각에서 ORTHRUS 평가위기까지 — 실시간 탐지 연구의 사슬을 따라가다 · grad.log</title>
+  <meta name="description" content="랜섬웨어 I/O trace 한 조각에서 시작해 EDR·ETW·GNN·프로비넌스 IDS를 하나의 사슬로 잇고, &quot;자체보고 F1 99%가 공정 재평가에서 precision 0에 수렴한다&quot;는 PIDS 평가위기를 MAGIC 재현(F1 99.54%)과 2-hop 라벨 팽창 시연(inflation 25배)으로 직접 검증한 연구 배경 노트.">
+  <meta property="og:title" content="랜섬웨어 I/O 한 조각에서 ORTHRUS 평가위기까지 — 실시간 탐지 연구의 사슬을 따라가다">
+  <meta property="og:description" content="랜섬웨어 I/O trace 한 조각에서 시작해 EDR·ETW·GNN·프로비넌스 IDS를 하나의 사슬로 잇고, &quot;자체보고 F1 99%가 공정 재평가에서 precision 0에 수렴한다&quot;는 PIDS 평가위기를 MAGIC 재현(F1 99.54%)과 2-hop 라벨 팽창 시연(inflation 25배)으로 직접 검증한 연구 배경 노트.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/realtime-detection-ransomware-to-orthrus.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/style.css">
+  <!-- KaTeX: 수식이 있는 글에서만 아래 3줄 유지, 없으면 삭제 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+</head>
+<body>
+<header class="site-header">
+  <a class="site-name" href="../index.html">grad.log</a>
+  <nav class="site-nav">
+    <a href="../index.html">Home</a>
+    <a href="../archive.html">Archive</a>
+    <a href="../about.html">About</a>
+  </nav>
+</header>
+<main>
+  <header class="post-header">
+    <div class="eyebrow">연구 노트 · 실시간 탐지</div>
+    <h1>랜섬웨어 I/O 한 조각에서 ORTHRUS 평가위기까지 — 실시간 탐지 연구의 사슬을 따라가다</h1>
+    <div class="meta">
+      <time datetime="2026-07-15">2026-07-15</time>
+      <span>약 16분</span>
+      <span class="tag">연구노트</span><span class="tag">랜섬웨어</span><span class="tag">EDR</span><span class="tag">GNN</span><span class="tag">PIDS</span>
+    </div>
+    <p class="lede">랜섬웨어 I/O trace 한 조각에서 시작해 EDR·ETW·GNN·프로비넌스 IDS를 하나의 사슬로 잇고, "자체보고 F1 99%가 공정 재평가에서 precision 0에 수렴한다"는 PIDS 평가위기를 MAGIC 재현(F1 99.54%)과 2-hop 라벨 팽창 시연(inflation 25배)으로 직접 검증한 연구 배경 노트.</p>
+  </header>
+  <article>
+
+<div class="toc">
+  <div class="toc-title">목차</div>
+  <ol>
+    <li><a href="#s0">층위 0. 랜섬웨어 I/O</a></li>
+    <li><a href="#s1">층위 1. EDR·ETW</a></li>
+    <li><a href="#s2">층위 2. GNN</a></li>
+    <li><a href="#s3">층위 3. 프로비넌스 IDS</a></li>
+    <li><a href="#s4">층위 4. 손으로 검증</a></li>
+    <li><a href="#s5">사슬을 다시 잇고, 다음 한 걸음</a></li>
+    <li><a href="#s6">미확보·한계</a></li>
+    <li><a href="#s7">출처</a></li>
+  </ol>
+</div>
+
+<p>랜섬웨어에 감염된 PC에서 뽑아낸 I/O trace 한 조각. 이 노트는 거기서 출발했다. "이 로그를 보안에서 대체 어떻게 쓰는 걸까?"라는 사소한 질문 하나가 EDR로, 시스템 이벤트 로그로, 프로비넌스 그래프로, 그래프 신경망으로, 그리고 이 분야 전체를 뒤흔드는 <strong>평가공정성 위기</strong>로 끝없이 이어졌다.</p>
+
+<p>놀라운 건 이 다섯 층이 따로 노는 지식 덩어리가 아니라 <strong>하나의 사슬</strong>이라는 점이다. "행위는 숨길 수 없다"는 단 하나의 원리가 랜섬웨어 차단에서 시작해 층층이 일반화되고, 층위 0에서 만난 오탐 딜레마는 규모만 키운 채 층위 3의 alert fatigue로 그대로 재연된다. 그리고 그 끝에는 충격적인 사실이 기다린다 — <strong>자체보고 F1 99%대를 자랑하던 탐지 시스템들이, 공정하게 다시 재보면 precision이 0에 수렴한다.</strong></p>
+
+<p>이 글은 그 사슬을 따라 다섯 층을 걷는다. 그리고 마지막엔 그 위기론을 말로만 믿지 않고 <strong>직접 손으로 검증한</strong> 실험 두 개로 닫는다 — MAGIC 재현(F1 99.54%)과, 라벨 팽창이 precision을 25배 부풀리는 메커니즘의 시연.</p>
+
+<figure>
+  <div class="fig-row">
+    <div style="overflow-x:auto; max-width:100%">
+      <svg width="1000" height="230" viewBox="0 0 1000 230" role="img" aria-label="층위 0~4 사슬 다이어그램: 랜섬웨어 I/O trace(층위0) → EDR 텔레메트리·ETW(층위1) → GNN 부품(층위2) → 프로비넌스 그래프·PIDS 평가위기(층위3) → 직접 실험(층위4)으로 이어지는 흐름도. 층위0→1 화살표 위에 '행위는 숨길 수 없다' 원리가, 층위0에서 층위3으로 되돌아가는 점선 화살표에 '오탐 딜레마 재연'이 표시됨">
+        <defs>
+          <marker id="chain-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+          </marker>
+          <marker id="chain-arr-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warn)"/>
+          </marker>
+        </defs>
+        <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#chain-arr)">
+          <line x1="160" y1="100" x2="248" y2="100"/>
+          <line x1="400" y1="100" x2="428" y2="100"/>
+          <line x1="580" y1="100" x2="608" y2="100"/>
+          <line x1="760" y1="100" x2="788" y2="100"/>
+        </g>
+        <text x="204" y="88" font-size="9.5" fill="var(--accent)" text-anchor="middle">행위는 숨길 수 없다</text>
+
+        <g fill="var(--bg)">
+          <rect x="10" y="48" width="150" height="104" rx="12" stroke="var(--accent)" stroke-width="2"/>
+          <rect x="250" y="48" width="150" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
+          <rect x="430" y="48" width="150" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
+          <rect x="610" y="48" width="150" height="104" rx="12" stroke="var(--warn)" stroke-width="2"/>
+          <rect x="790" y="48" width="150" height="104" rx="12" stroke="var(--line)" stroke-width="1.5"/>
+        </g>
+        <g>
+          <circle cx="40" cy="48" r="14" fill="var(--accent)"/>
+          <circle cx="280" cy="48" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+          <circle cx="460" cy="48" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+          <circle cx="640" cy="48" r="14" fill="var(--warn)"/>
+          <circle cx="820" cy="48" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+        </g>
+        <g text-anchor="middle" font-size="12.5" font-weight="600" dominant-baseline="central">
+          <text x="40" y="49" fill="#14181d">0</text>
+          <text x="280" y="49" fill="var(--muted)">1</text>
+          <text x="460" y="49" fill="var(--muted)">2</text>
+          <text x="640" y="49" fill="#14181d">3</text>
+          <text x="820" y="49" fill="var(--muted)">4</text>
+        </g>
+        <g text-anchor="middle">
+          <text x="85" y="90" font-size="13" font-weight="700" fill="var(--ink)">층위 0</text>
+          <text x="85" y="112" font-size="10.5" fill="var(--muted)">랜섬웨어</text>
+          <text x="85" y="129" font-size="10.5" fill="var(--muted)">I/O trace</text>
+
+          <text x="325" y="90" font-size="13" font-weight="700" fill="var(--ink)">층위 1</text>
+          <text x="325" y="112" font-size="10.5" fill="var(--muted)">EDR 텔레메트리</text>
+          <text x="325" y="129" font-size="10.5" fill="var(--muted)">· ETW</text>
+
+          <text x="505" y="90" font-size="13" font-weight="700" fill="var(--ink)">층위 2</text>
+          <text x="505" y="112" font-size="10.5" fill="var(--muted)">GNN</text>
+          <text x="505" y="129" font-size="10.5" fill="var(--muted)">부품</text>
+
+          <text x="685" y="90" font-size="13" font-weight="700" fill="var(--ink)">층위 3</text>
+          <text x="685" y="112" font-size="10.5" fill="var(--muted)">프로비넌스 그래프</text>
+          <text x="685" y="129" font-size="10.5" fill="var(--muted)">· PIDS 평가위기</text>
+
+          <text x="865" y="90" font-size="13" font-weight="700" fill="var(--ink)">층위 4</text>
+          <text x="865" y="112" font-size="10.5" fill="var(--muted)">직접</text>
+          <text x="865" y="129" font-size="10.5" fill="var(--muted)">실험</text>
+        </g>
+        <path d="M 85,152 C 85,215 640,215 640,152" fill="none" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#chain-arr-warn)"/>
+        <text x="362" y="228" font-size="10.5" fill="var(--warn)" text-anchor="middle">오탐 딜레마 재연</text>
+      </svg>
+    </div>
+  </div>
+  <figcaption>층위 0→4 사슬 — 랜섬웨어 I/O trace에서 EDR·ETW·GNN·프로비넌스 그래프를 거쳐 PIDS 평가위기, 직접 실험까지 이어진다. "행위는 숨길 수 없다" 원리가 0→1을, 오탐 딜레마 재연이 0→3을 되짚는다.</figcaption>
+</figure>
+
+<p>시작하기 전에, 이 글 전체를 관통하는 용어 몇 개만 손에 쥐고 가자.</p>
+<ul>
+  <li><strong>프로비넌스 그래프</strong> — 프로세스·파일·소켓을 노드로, 시스템콜 인과관계를 엣지로 담은 whole-system 이벤트 그래프. PIDS의 입력 원료.</li>
+  <li><strong>PIDS</strong> — Provenance-based IDS. 프로비넌스 그래프 위에서 침입을 탐지하는 시스템.</li>
+  <li><strong>ETW</strong> — Event Tracing for Windows. 커널이 직접 기록하는 Windows 통합 관찰 인프라.</li>
+  <li><strong>IOC / IOA</strong> — 침해 지표(해시·IP 등 정적 시그니처) / 공격 행위(MITRE ATT&amp;CK 기반 행동 패턴).</li>
+  <li><strong>QoA</strong> — Quality of Attribution. 분석가가 실제로 검수해야 할 노드 수로 측정한 귀속 품질. ORTHRUS의 1급 목표.</li>
+  <li><strong>oversmoothing</strong> — GNN 층을 무한히 쌓으면 노드 표현이 한 점으로 수렴하는 현상. 깊이 제약의 근원.</li>
+</ul>
+
+<div class="stat-row">
+  <div class="stat">
+    <div class="stat-value">97.01% <span class="vs">→</span> <span class="dim">0.00</span></div>
+    <div class="stat-label">MAGIC 자체보고 CADETS F1 → ORTHRUS 엄밀 재평가 precision</div>
+    <div class="stat-context">TP=63, FP≈80,000 — 2-hop 이웃 라벨을 엄밀 노드 라벨로 바꿔 재채점하면 precision이 사실상 0으로 붕괴한다.</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">25<span class="vs">×</span></div>
+    <div class="stat-label">2-hop 이웃 라벨링이 부풀리는 배율(illustrative 시연)</div>
+    <div class="stat-context">엄밀 노드 N=43을 2-hop까지 확장하면 M=1,075로 팽창 — 같은 예측 집합의 precision이 0.9972에서 0.0399로 떨어진다.</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">99.54% <span class="vs">±</span><span class="dim">0.65%p</span></div>
+    <div class="stat-label">MAGIC StreamSpot 재현 F1 (직접 재현)</div>
+    <div class="stat-context">논문 값 99.71% 대비 -0.17%p — 소스 코드 수정 없이, 게이트 ±1%p를 통과한 신뢰 밑라인.</div>
+  </div>
+</div>
+
+<h2 id="s0"><span class="no">0</span>출발점: 랜섬웨어의 I/O는 거짓말하지 않는다</h2>
+
+<p>랜섬웨어의 공격은 네 단계로 흐른다 — 침투 → 준비·C&amp;C 통신 → 탐색·암호화 → 협박. 이 중 탐색·암호화 구간에서 I/O trace가 폭발적으로 터진다. 비대칭 키 암호화를 악용하기 때문에 감염 후 복구는 사실상 불가능하고, 최근에는 데이터를 유출까지 하는 Double Extortion이 추세다. 그래서 탐지는 딱 하나의 순간을 노려야 한다 — 암호화가 벌어지는 바로 그때.</p>
+
+<p>다행히 랜섬웨어는 기계적으로 반복되는 I/O 흔적을 남긴다. 이 흔적을 노리는 탐지 계보가 셋 있다. IRP/미니필터 미세 패턴 분석(예: ShieldFS)은 <code>디렉토리 쿼리 → 파일 열기 → 전체 읽기 → 전체 쓰기 → 확장자 변경(Rename)</code>이라는 반복 trace를 IOPS·Read/Write 비율로 학습한다. Write 페이로드 엔트로피 분석(예: CryptoDrop, Redemption)은 낮은 엔트로피 Read 직후 한계치(약 7.9/8.0) 이상 엔트로피 Write가 지속되면 랜섬웨어로 규정해 강제 종료한다. 마지막으로 디코이(미끼) 파일 트래핑은 사용자가 절대 안 건드릴 미끼 파일에 Write/Modify I/O가 찍히는 순간 해당 프로세스 트리를 추적·킬한다.</p>
+
+<p>차단 구조 자체는 명쾌하다. OS 미니필터가 '톨게이트' 역할로 최근 1~3초 타임 윈도우만 감시하다가, 임계치를 넘으면 Write를 막고 프로세스를 죽인다. 문제는 여기 두 개의 근본적 트레이드오프가 박혀 있다는 것이다.</p>
+<ul>
+  <li><strong>micro-damage</strong> — 패턴을 인식하기까지 최소 3~5개 파일 암호화 희생은 불가피하다(디코이로 보완).</li>
+  <li><strong>오탐의 늪</strong> — 압축 해제·백신 전체검사의 I/O 패턴이 랜섬웨어와 유사해, 임계선 튜닝이 최대 난제다.</li>
+</ul>
+
+<p>이 오탐 딜레마는 기억해 두자. 사라지지 않기 때문이다. 층위 3에서 PIDS의 <strong>alert fatigue·QoA 문제</strong>로 규모만 잔뜩 키운 채 다시 나타난다.</p>
+
+<h2 id="s1"><span class="no">1</span>EDR: "행위는 숨길 수 없다"를 모든 위협으로 확장하다</h2>
+
+<p>층위 0이 준 통찰 — <strong>"행위는 숨길 수 없다"</strong> — 을 랜섬웨어 하나를 넘어 모든 위협으로 일반화한 것이 EDR이다. 백신이 지명수배 전단지(시그니처)라면, EDR은 CCTV를 돌리며 행동을 프로파일링하는 특수요원이다.</p>
+
+<p>EDR 파이프라인은 네 단계다 — 텔레메트리 수집 → 행위 기반 탐지(프로세스 트리 인과관계, MITRE ATT&amp;CK) → 실시간 대응(프로세스 킬, 네트워크 격리) → 사후 분석(RCA)·헌팅. 이 중 <strong>1단계(수집)가 이후 모든 층위의 원료</strong>를 만든다는 점이 핵심이다.</p>
+
+<p>무엇을 신뢰할 수 있는가. 커널 수집 기술은 셋이다. API 후킹("전화선 도청")은 CreateProcess/WriteFile 등을 가로채지만 Direct Syscall로 우회당한다. 콜백/ETW("공식 CCTV")는 OS 공식 이벤트를 구독해 합법적이고 안정적이며 우회가 어렵다 — 현대 EDR 대부분이 여기 의존한다. 미니필터 드라이버("검문소")는 파일시스템 스택의 IRP를 실시간 검문·통제하는데, 층위 0의 랜섬웨어 차단이 바로 이 계층이었다.</p>
+
+<p>탐지 엔진의 논리는 IOC와 IOA로 갈린다. IOC(전과자 얼굴 대조)는 해시·IP 블록리스트로 빠르고 정확하지만 변종에 무력하다. EDR의 진짜 핵심은 IOA(행동 프로파일링)다. 예를 들어 규칙 A(워드가 cmd/powershell 실행) + 규칙 B(powershell이 레지스트리에 Base64 등록, Fileless 의심) + 규칙 C(<code>vssadmin delete shadows</code> 백업 삭제)를 상관분석하면 "99% 랜섬웨어"라는 판정이 나온다. 여기에 ML 행위 베이스라인(정상 패턴을 학습한 뒤 이탈을 탐지)을 얹는다.</p>
+
+<h3>ETW: OS가 자기 자신에 대해 거짓말하지 않는 관찰 경로</h3>
+
+<p>이 사슬에서 ETW(Event Tracing for Windows)는 특별한 위치에 있다. Windows 전 스택(앱·서비스·드라이버·커널·하이퍼바이저)이 공유하는 통합 관찰 인프라이고, Windows Defender·WER·Performance Monitor가 모두 이걸 쓴다. 커널이 직접 기록하니 오버헤드·타이밍 왜곡이 없다 — <strong>이것이 프로비넌스 그래프의 신뢰 가능한 원료가 되는 이유</strong>다.</p>
+
+<p>구조를 한 줄로 훑으면 이렇다. Controller(xperf/wpr/logman, 세션 제어) → Provider(이벤트 생성, 128bit GUID; 커널/매니페스트/TraceLogging/WPP 4종) → Session(NT Kernel Logger·일반 최대 64개·AutoLogger·실시간) → Buffer Manager(CPU별 전용 버퍼 풀, 락 없이 병렬 기록 → 수백 ns 오버헤드, flush thread가 비동기로 ETL 기록) → Consumer(OpenTrace/ProcessTrace 콜백). 커널 Provider에는 PROC_THREAD, LOADER, DISK_IO, FILE_IO, NETWORK_TCPIP, REGISTRY, CSWITCH, SYSCALL 등이 있고, 이벤트 레코드는 Provider GUID·100ns 단위 타임스탬프·PID/TID·Opcode(Start/Stop 쌍으로 구간 측정)를 담는다.</p>
+
+<p>보안 활용도 촘촘하다. Microsoft-Windows-Threat-Intelligence Provider는 프로세스 인젝션·메모리 쓰기·APC를 탐지하고, Defender가 ETW를 실시간 소비한다. 다만 만능은 아니다 — ETW 커널 공격 사례가 실제로 존재한다. DKOM으로 Provider를 무력화한 사례(IBM X-Force, welivesecurity 구형 드라이버 취약점 보고)가 보고돼 있다.</p>
+
+<p>여기서 층위 1의 결정적 다리가 놓인다. <strong>ETW/auditd가 만드는 시스템 이벤트 로그가 곧 프로비넌스 그래프(층위 3)의 원료</strong>다. 커널이 기록한 프로세스·파일·네트워크 이벤트를 인과관계로 엮으면 그게 바로 그래프가 된다.</p>
+
+<h2 id="s2"><span class="no">2</span>그래프 신경망: 그래프를 학습하는 심장</h2>
+
+<p>층위 1이 그래프를 만들었다면, 그걸 <strong>어떻게 학습하느냐</strong>가 층위 3 탐지기의 심장이다. 그 심장의 부품이 GNN이다. 기준 재료는 Wu 외의 서베이 "A Comprehensive Survey on Graph Neural Networks"(IEEE TNNLS 32(1), 2021, 실질 커버리지 컷오프 2019)다.</p>
+
+<p>서베이는 GNN을 네 범주로 나눈다. RecGNN(수축사상 제약 하 평형까지 반복 갱신), ConvGNN(유한 층 합성곱, spectral vs spatial로 세분), GAE(구조 복원 비지도 오토인코더), STGNN(그래프 컨볼루션 + RNN/CNN 시공간).</p>
+
+<p>이 중 ConvGNN의 계보가 흥미롭다. 모든 spectral ConvGNN은 다음 한 식으로 통일되고, 차이는 필터 \(g_\theta\) 선택뿐이다.</p>
+
+$$x *_G g_\theta = U\, g_\theta\, U^\top x \quad \text{(식 5)}$$
+
+<p>이 한 줄에서 계보가 갈린다 — Spectral CNN(고유분해 O(n³)) → ChebNet(체비셰프 다항 근사, K-hop 국소화, O(m)) → GCN(1차 근사 + renormalization trick). GCN을 식 13으로 풀면 이웃 가중합이 되어 <strong>spectral과 spatial을 잇는 다리</strong>가 된다. spatial 계열은 MPNN(식 21~22)이 일반 프레임워크로 포괄하고, GIN이 WL 동형 판정 테스트를 GNN 표현력 상한으로 규명했다.</p>
+
+<h3>PIDS 백본으로 이어지는 세 모델</h3>
+
+<p>이 서베이가 이 노트에서 결정적인 이유는, 여기 나오는 세 모델이 층위 3 탐지기의 백본이 되기 때문이다. <strong>GraphSAGE</strong>(Hamilton 외, NIPS 2017)는 고정 크기 이웃 샘플 + 순열불변 집계(mean/LSTM/pool)로 inductive하며, <strong>ThreaTrace·FLASH의 백본</strong>이 된다. <strong>GAT</strong>(Veličković 외, ICLR 2018)는 masked self-attention으로 이웃 기여를 학습하는 멀티헤드 구조로, <strong>MAGIC의 백본</strong>이다. 그리고 <strong>GAE/오토인코더 개념</strong>은 <strong>MAGIC의 masked graph AE, SIGL의 Graph-LSTM AE</strong>로 이어진다.</p>
+
+<p>정량 수치는 원저에 귀속된 값 그대로다. 아래 표를 함께 보되, 표를 읽는 규칙(바로 아래 경고)을 먼저 지켜야 한다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>모델</th><th>Cora</th><th>Citeseer</th><th>Pubmed</th><th>NELL</th><th>PPI(micro-F1)</th><th>Reddit</th><th>Citation</th></tr>
+<tr><td>GCN</td><td>81.5</td><td>70.3</td><td>79.0</td><td>66.0</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td>GAT</td><td>83.0</td><td>72.5</td><td>79.0</td><td>—</td><td>0.973</td><td>—</td><td>—</td></tr>
+<tr><td>GraphSAGE(비지도)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>0.502</td><td>0.908</td><td>0.798</td></tr>
+</table>
+</div>
+
+<div class="note warn"><strong>비교 규율 (원문 보존)</strong>
+<ul>
+  <li>GCN vs GAT는 동일 데이터셋·동일 지표라 직접 비교 가능(GAT가 Cora·Citeseer 우위, Pubmed 동률).</li>
+  <li>그러나 <strong>GraphSAGE는 micro-F1·귀납·비지도 세팅이라 같은 표 비교 금지.</strong></li>
+  <li>GAT PPI 0.973 vs GraphSAGE PPI 0.502도 세팅 차이가 커 직접 비교 금지.</li>
+</ul>
+</div>
+
+<p>저자가 명시한 한계들은 그냥 한계가 아니다. 그대로 층위 3의 문제의식으로 넘어간다. <strong>oversmoothing</strong>(층을 무한히 쌓으면 노드 표현이 한 점으로 수렴, 깊이를 못 쌓음), <strong>확장성-완전성 트레이드오프</strong>(샘플링은 이웃을 놓치고 클러스터링은 구조를 잃는다), <strong>이종(heterogeneous) 그래프 취약</strong>, 그리고 <strong>동적(dynamic) 그래프 미비</strong>. 특히 마지막 "동적 그래프 취약"이 곧 <strong>TGNN(Kairos 계열)의 등장 배경</strong>이 된다.</p>
+
+<p>서베이 자체의 한계도 짚어두자. 자체 실험 수치가 없고(정량은 원저 귀속), 2019 컷오프라 Graph Transformer·자기지도 대조학습·oversquashing 이론은 부재하다. ORTHRUS의 GraphTransformer는 이 컷오프 바깥의 후속 흐름이다.</p>
+
+<h2 id="s3"><span class="no">3</span>프로비넌스 기반 IDS: 세 사슬이 만나는 곳</h2>
+
+<p>여기서 세 사슬이 한 자리에 모인다 — 층위 1의 <strong>시스템 이벤트 로그</strong>(원료), 층위 2의 <strong>GNN</strong>(엔진), 층위 0의 <strong>오탐 딜레마</strong>(재연되는 난제). 프로비넌스 IDS는 이 셋을 한꺼번에 놓는다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="640" height="260" viewBox="0 0 640 260" role="img" aria-label="프로비넌스 그래프 개념도: 프로세스 노드(원)·파일 노드(사각)·소켓 노드(마름모)를 시스템콜 인과 엣지(방향 화살표)로 연결한 whole-system 그래프. 왼쪽은 정상 서브그래프(bash가 config.ini를 read), 오른쪽은 악성 프로세스 트리(powershell→cmd.exe→C2 소켓, 굵은 강조 엣지)를 대비">
+      <defs>
+        <marker id="prov-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+        <marker id="prov-arr-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warn)"/>
+        </marker>
+      </defs>
+      <line x1="320" y1="24" x2="320" y2="236" stroke="var(--line)" stroke-width="1.4" stroke-dasharray="4 4"/>
+      <text x="160" y="30" font-size="12" fill="var(--muted)" text-anchor="middle">정상 서브그래프</text>
+      <text x="480" y="30" font-size="12" fill="var(--warn)" text-anchor="middle">악성 프로세스 트리</text>
+
+      <g stroke="var(--muted)" stroke-width="1.8" marker-end="url(#prov-arr)">
+        <line x1="105" y1="120" x2="175" y2="120"/>
+      </g>
+      <text x="140" y="110" font-size="10.5" fill="var(--muted)" text-anchor="middle">read</text>
+      <circle cx="75" cy="120" r="22" fill="var(--accent)"/>
+      <text x="75" y="121" font-size="11" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">bash</text>
+      <rect x="180" y="100" width="100" height="40" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.6"/>
+      <text x="230" y="121" font-size="10" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">config.ini</text>
+
+      <g stroke="var(--warn)" stroke-width="2.6" marker-end="url(#prov-arr-warn)">
+        <line x1="420" y1="80" x2="420" y2="150"/>
+        <line x1="443" y1="180" x2="530" y2="140"/>
+      </g>
+      <text x="440" y="118" font-size="10.5" fill="var(--warn)" text-anchor="middle">fork</text>
+      <text x="500" y="150" font-size="10.5" fill="var(--warn)" text-anchor="middle">connect</text>
+
+      <circle cx="420" cy="65" r="20" fill="var(--accent)"/>
+      <text x="420" y="66" font-size="10" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">powershell</text>
+      <circle cx="420" cy="180" r="20" fill="var(--accent)"/>
+      <text x="420" y="181" font-size="10" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">cmd.exe</text>
+      <path d="M 570 108 L 610 140 L 570 172 L 530 140 Z" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.8"/>
+      <text x="570" y="141" font-size="9.5" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">C2:443</text>
+    </svg>
+  </div>
+  <figcaption>프로비넌스 그래프 개념도 — ● 프로세스, ▭ 파일, ◆ 소켓 노드를 시스템콜 인과 엣지로 연결. 왼쪽 정상 서브그래프 대비 오른쪽 악성 프로세스 트리는 굵은 강조 엣지로 표시된다.</figcaption>
+</figure>
+
+<p>문헌은 네 갈래로 진화했다. 시퀀스 HIDS(ADFA-LD, LSTM/Transformer)는 순서 정보에 강하지만 문맥·확장성이 약하다. 그래프 스케치/클러스터링(StreamSpot, Unicorn, 비신경망)은 스트림에 강하지만 그래프-레벨 한계가 있다. GNN 표현학습(ShadeWatcher, FLASH, MAGIC)은 노드 정밀·자기지도·KG로 넘어왔지만 추론 비용·FP·평가공정성 이슈를 안는다. 그리고 TGNN+귀속(Kairos, ORTHRUS)이 시간 동역학 + 자동 공격 재구성으로 <strong>2024~2025 최전선</strong>을 이룬다. 흥미로운 건 갈래 사이의 동력이다 — (2)→(3)을 민 것이 층위 2의 GNN 표현학습이고, (3)→(4)를 민 것이 층위 2가 지적한 바로 그 <strong>"동적 그래프 미비"</strong> 한계다.</p>
+
+<p>한 가지 함정이 있다. 계열마다 "실시간"의 뜻이 다르다는 것이다. 진짜 엣지-스트리밍은 StreamSpot(10만 edges/s)뿐이고, Kairos·ORTHRUS는 15분 윈도우의 준실시간이며, MAGIC·FLASH·ShadeWatcher는 사실상 배치다. ATLAS는 아예 탐지가 아니라 사후 조사다. 이 구분이 뒤에 나올 "저지연 조기탐지 gap"의 근거가 된다.</p>
+
+<h3>대표 3종을 자세히</h3>
+
+<p><strong>MAGIC</strong>(2024 USENIX Sec, arXiv:2310.09831)은 마스크 그래프 오토인코더(GAT, 자기지도) + KNN 이상탐지로, 배치 로그레벨과 엔티티레벨을 한 모델에 담고 drift 적응 메커니즘을 갖췄다. 차별점은 자기지도+멀티그래뉼래러티, ShadeWatcher 대비 <strong>51배</strong> 오버헤드 우위, 그리고 정적 배치처리다. 자체보고 수치는 화려하다 — StreamSpot <strong>F1 99.71%/AUC 99.95%</strong>, E3-Trace F1 99.57%, THEIA 99.11%, CADETS 97.01%. 한계는 KNN이 추론시간의 99%를 차지하고, 수동 엔티티에 약하며, 양성 포이즌에 취약하다는 점. 층위 4에서 직접 재현할 바로 그 모델이다.</p>
+
+<p><strong>Kairos</strong>(2024 IEEE S&amp;P, arXiv:2308.05034)는 TGNN 인코더(노드 state 메모리) + 엣지 재구성오차로 시간윈도우 이상을 스코어링한다. 준실시간 스트림, 15분 윈도우 런타임 탐지 — 층위 2의 동적 그래프 한계에 대한 정확한 응답이다. 다만 <strong>자체 정량 수치는 초록 미기재로 직접 미확보</strong>이고, ORTHRUS의 엄밀 평가에서는 대부분 공격을 미탐(E3 0/3, E5 0/2)하며 drift 취약을 스스로 인정한다.</p>
+
+<p><strong>ORTHRUS</strong>(2025 USENIX Sec, Jiang·Bilot 외)는 GraphTransformer 변형 인코더-디코더 + <strong>stateless</strong> temporal sampling으로, Kairos의 TGN state 메모리를 제거해 약 3배 메모리를 절감한다. 여기에 인과분석(back/forward tracing) + criticality score로 attack summary graph를 만든다. 그런데 결정적 차이는 아키텍처가 아니다 — <strong>노드 단위로 41~123개의 엄밀한 ground truth를 새로 만들고 precision 중심으로 평가</strong>한다는 점이다. 이 평가 철학이 다음 이야기의 폭탄이다.</p>
+
+<h3>평가공정성 위기(QoA) — 이 분야의 진짜 화두</h3>
+
+<p>ORTHRUS의 핵심 지적은 이렇다. PIDS 대부분이 near-perfect F1을 자체보고하지만, 그 평가방식(2-hop 이웃/배치/소스 라벨링)이 악성 노드를 수천 개로 과대평가해 분석가의 검수부담(QoA)을 전혀 줄이지 못한다는 것이다. 결론은 한 문장으로 압축된다 — <strong>"같은 엄밀 평가로 재측정하면 baseline precision이 0에 수렴."</strong></p>
+
+<p>아래 표는 각 베이스라인의 자체보고 수치와 ORTHRUS 엄밀 재평가(E3-CADETS 기준)를 나란히 둔 것이다. 다만 표를 읽기 전에 <strong>읽는 규칙</strong>부터 지켜야 한다. 이걸 어기면 표가 오히려 거짓말을 하게 된다.</p>
+
+<div class="note warn"><strong>행 간·열 간 직접 비교 금지 (원문 경고 보존)</strong>
+<ul>
+  <li>provenance IDS 수치는 라벨링·탐지단위·데이터셋 비일관으로 <strong>논문 간 직접 비교 불가가 기본값</strong>이다.</li>
+  <li>베이스라인 자체보고 F1(2-hop 라벨)과 ORTHRUS의 precision/MCC(엄밀 노드 라벨)는 <strong>서로 다른 ground truth 산물</strong>이라 같은 축에서 크기 비교하면 안 된다.</li>
+  <li>MCC는 데이터셋 의존적이라 <strong>동일 데이터셋 내 상대 비교만</strong> 유효.</li>
+</ul>
+</div>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>시스템</th><th>방법 / 단위</th><th>자체보고 수치(자기 평가전략)</th><th>ORTHRUS 엄밀 재평가(E3-CADETS)</th><th>QoA</th></tr>
+<tr><td><strong>ORTHRUS</strong>(기준)</td><td>GraphTransformer+stateless / 노드</td><td>E3-CADETS P=0.52·MCC=0.44; E3-THEIA P=0.81·MCC=0.57</td><td>48노드 플래그(25 TP/23 FP)</td><td><strong>핵심 목표</strong></td></tr>
+<tr><td>Kairos</td><td>TGN state 메모리 / 노드</td><td>초록 미기재(직접 미확보)</td><td class="hl">TP≈0 → P=0.00, MCC=0.00</td><td>부분(증상 완화)</td></tr>
+<tr><td>ThreaTrace</td><td>GraphSAGE 귀납 / 노드</td><td>StreamSpot F1=1.0; CADETS F1=0.94 (2-hop)</td><td class="hl">TP=61, FP≈252k → P=0.00</td><td>부분</td></tr>
+<tr><td>SIGL</td><td>Graph-LSTM AE / 그래프+노드</td><td>정확도 96% (625 악성 설치자)</td><td class="hl">TP=0/FP=80 → P=0.00(부적합)</td><td>부분(설치 랭킹)</td></tr>
+<tr><td>MAGIC</td><td>GAT masked AE+KNN / 엔티티+배치</td><td>StreamSpot F1=99.71; CADETS F1=97.01 (엔티티+이웃)</td><td class="hl">TP=63, FP≈80k → P=0.00</td><td>낮음</td></tr>
+<tr><td>Flash</td><td>Word2vec+GNN / 노드</td><td>평균 F1≈0.945; CADETS F1=0.97 (2-hop)</td><td class="hl">2,394노드(13 TP/2,381 FP) → P&lt;0.01, MCC=0.03</td><td>부분</td></tr>
+</table>
+</div>
+
+<p>한 발 더 보태는 관측도 있다. "Toward Practical and Usable Prov-IDS"(USENIX ;login: 2025)는 <strong>2-hop 이웃 라벨링이 benign을 끌어들이고 source-descendant 라벨링이 악성을 과다 태깅</strong>한다고 지적하며, CADETS 30시간에 12,000+ 노드를 악성 태깅한 사례를 든다.</p>
+
+<p>그래서 이 분야에는 세 개의 열린 문제가 남는다.</p>
+<ul>
+  <li><strong>① 평가 방법론 비일관·부풀림(재현성 위기)</strong> — 2-hop 이웃 라벨링이 FLASH·MAGIC precision을 99%대로 보이게 하나 공정평가 시 0.1 미만으로 붕괴한다. 통일 노드레벨 메트릭 + 공정 라벨링 프로토콜이 필요하다(ORTHRUS 부분 진전).</li>
+  <li><strong>② 개념표류(drift) 하 온라인 연속학습 부재</strong> — 대부분 "정상행동 학습 후 불변"을 가정한다. Kairos는 drift 취약을 자인, MAGIC만 분석가 피드백 적응. 안전한 온라인 재학습(+포이즌 방어)은 미해결이다(층위 2의 동적 그래프 한계가 여기서 실무 난제로 재등장).</li>
+  <li><strong>③ 진짜 저지연 조기탐지와 귀속품질 동시달성</strong> — 현 실시간도 대개 15분 윈도우 또는 배치다. 엣지단위 스트리밍을 유지하며 검수노드 수를 자릿수로 줄이는 운영급 절충이 빈칸으로, 가장 유망한 gap이다.</li>
+</ul>
+
+<h2 id="s4"><span class="no">4</span>위기론을 손으로 검증하다</h2>
+
+<p>여기까지는 남의 이야기다. 층위 4는 층위 3의 두 주장 — "MAGIC의 자체보고 수치"와 "그 수치가 공정평가에서 붕괴한다"는 위기론 — 을 <strong>직접 손으로 검증</strong>한 층이다. 하나는 신뢰 밑라인을 세우고(재현), 하나는 붕괴 메커니즘을 정량화했다(시연). 두 실험의 성격은 근본적으로 다르며, 절대 섞이지 않는다. 이 구분이 이 층의 전부다.</p>
+
+<h3>4-1. MAGIC StreamSpot 재현 — 신뢰 밑라인 (실측)</h3>
+
+<p>MAGIC(USENIX Security '24)을 로컬에서 처음부터 재학습·재평가했다. <strong>소스 코드 수정 없이</strong> 논문 수치가 재현됐다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>지표</th><th>논문 값</th><th>재현 값</th><th>비고</th></tr>
+<tr><td>F1</td><td>99.71%</td><td class="hl">99.54% ±0.65%p</td><td>-0.17%p (게이트 ±1%p 통과)</td></tr>
+<tr><td>AUC</td><td>99.95%</td><td class="hl">99.95% ±0.07%p</td><td>논문 값과 일치</td></tr>
+<tr><td>Precision</td><td>—</td><td>99.20% ±1.13%p</td><td>논문 미표기</td></tr>
+<tr><td>Recall</td><td>—</td><td>99.90% ±0.70%p</td><td>논문 미표기</td></tr>
+</table>
+</div>
+
+<p>혼동행렬(100회 평균)은 TP 99.9, FP 0.82, TN 99.18, FN 0.1. 환경은 <code>edr-magic</code> conda(CPU) — torch 1.12.1+cpu, dgl 1.0.0, Python 3.8, 학습 5 epoch, batch 12, num_hidden 256, seed 0, loss 0.3186 → 0.0916. 학습 시간은 <strong>12분 52초</strong>(CPU, RTX 없음)였다.</p>
+
+<div class="note warn"><strong>재현 범위 한정 (원문 경고 보존)</strong>: 이 수치는 레포 동봉 전처리 아티팩트(<code>data/streamspot/graphs.pkl</code>, 600 그래프)로 검증한 것으로, <strong>모델+학습+KNN 평가 스택의 재현이지 원시 로그→파서 단계(<code>all.tsv</code> → <code>streamspot_parser.py</code>)는 이번에 재검증하지 않았다</strong>. 동봉 pkl이 파서 산출과 동일한지는 미검증 가정. (Phase 1b E3-CADETS 재현은 디스크 제약 — 가용 43GB vs 수십GB 소요 — 으로 스킵)</div>
+
+<h3>4-2. QoA 붕괴 메커니즘 시연 — illustrative (시연, 실측 아님)</h3>
+
+<p>두 번째 실험은 성격이 다르다. 실제 ORTHRUS E3-CADETS 엄밀 노드 라벨(<code>node_Nginx_Backdoor_12.csv</code>, 시나리오 #12, <strong>N=43</strong> — <code>ubc-provenance/ground-truth</code> 저장소의 실제 UUID 목록)을 앵커로 삼아, <strong>동일한 예측 집합을 두 라벨 체계로 각각 채점</strong>했다. 같은 답안지를 두 채점 기준으로 매긴 셈이다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>라벨 체계</th><th>TP</th><th>FP</th><th>precision</th><th>recall</th><th>비고</th></tr>
+<tr><td>2-hop 이웃(자기보고식)</td><td>1075</td><td>3</td><td class="hl">0.9972 (≈99.72%)</td><td>1.0</td><td>near-perfect의 근원</td></tr>
+<tr><td>엄밀 노드(ORTHRUS식)</td><td>43</td><td>1035</td><td class="hl">0.0399 (≈3.99%)</td><td>1.0</td><td>실제 검수 부담</td></tr>
+</table>
+</div>
+
+<p>메커니즘은 단순하고 그래서 무섭다. 엄밀 라벨 N개를 2-hop까지 확장하면 이렇게 팽창한다.</p>
+
+$$M = N \times (1 + k_1 + k_1 k_2) = 1 + 4 + 20 = 25 \times$$
+
+<p>즉 \(N_{\text{strict}} = 43\), \(M_{\text{neigh}} = 1075\), 그래서 \(\text{inflation\_factor} = M/N = 25.0\) (<code>K1_FANOUT=4</code>, <code>K2_FANOUT=5</code>인 illustrative fan-out에서 산출). 두 체계는 <strong>같은 분모(예측 집합)를 공유하고 TP로 인정되는 분자만 바뀌므로</strong>, precision 비율을 inflation_factor가 사실상 지배한다. 참고로 MCC는 두 체계 모두 0.0으로 나오는데, 이 illustrative universe에 <strong>true negative가 없어(tn=0) MCC가 정의되지 않은</strong> 것이지 "무작위 성능"이 아니다. 그래서 이 시연은 precision만 쓴다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="640" height="260" viewBox="0 0 640 260" role="img" aria-label="2-hop 라벨 팽창 메커니즘 시각화: 중앙의 엄밀 노드 N=43(강조 원)에서 1-hop 이웃 4개(k1=4), 2-hop 이웃 20개(k1×k2=20)로 뻗어나가는 트리, 총 M=1+4+20=25배 팽창. 오른쪽에는 precision이 0.9972에서 0.0399로 붕괴하는 대비가 표시됨">
+      <g stroke="var(--muted)" stroke-width="1.4">
+        <line x1="150" y1="140" x2="80" y2="70"/>
+        <line x1="150" y1="140" x2="80" y2="210"/>
+        <line x1="150" y1="140" x2="230" y2="70"/>
+        <line x1="150" y1="140" x2="230" y2="210"/>
+      </g>
+      <circle cx="150" cy="140" r="24" fill="var(--accent)"/>
+      <text x="150" y="141" font-size="12" font-weight="700" fill="#14181d" text-anchor="middle" dominant-baseline="central">N=43</text>
+
+      <g fill="var(--muted)">
+        <circle cx="80" cy="70" r="9"/>
+        <circle cx="80" cy="210" r="9"/>
+        <circle cx="230" cy="70" r="9"/>
+        <circle cx="230" cy="210" r="9"/>
+      </g>
+      <g font-size="10" fill="var(--muted)" text-anchor="middle">
+        <text x="55" y="52">+5 (2-hop×5)</text>
+        <text x="55" y="234">+5 (2-hop×5)</text>
+        <text x="255" y="52">+5 (2-hop×5)</text>
+        <text x="255" y="234">+5 (2-hop×5)</text>
+      </g>
+      <text x="150" y="245" font-size="12" font-weight="700" fill="var(--ink)" text-anchor="middle">1 + 4 + 20 = 25×</text>
+
+      <line x1="330" y1="30" x2="330" y2="240" stroke="var(--line)" stroke-width="1.4" stroke-dasharray="4 4"/>
+
+      <rect x="370" y="50" width="220" height="60" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6"/>
+      <text x="480" y="72" font-size="11" fill="var(--muted)" text-anchor="middle">2-hop 이웃 라벨</text>
+      <text x="480" y="96" font-size="18" font-weight="700" fill="var(--accent)" text-anchor="middle">precision 0.9972</text>
+
+      <line x1="480" y1="118" x2="480" y2="150" stroke="var(--warn)" stroke-width="1.8" marker-end="url(#chain-arr-warn)"/>
+
+      <rect x="370" y="158" width="220" height="60" rx="10" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.6"/>
+      <text x="480" y="180" font-size="11" fill="var(--muted)" text-anchor="middle">엄밀 노드 라벨</text>
+      <text x="480" y="204" font-size="18" font-weight="700" fill="var(--warn)" text-anchor="middle">precision 0.0399</text>
+    </svg>
+  </div>
+  <figcaption>2-hop 라벨 팽창 메커니즘 — 엄밀 노드 N=43에서 1-hop 4개, 2-hop 20개로 뻗어 총 M=25배 팽창. 이 팽창이 precision을 0.9972에서 0.0399로 붕괴시킨다(illustrative 시연).</figcaption>
+</figure>
+
+<div class="note warn"><strong>시연 vs 실측 구분 엄수 (원문 경고 보존)</strong>
+<ul>
+  <li>예측·2-hop 이웃 그래프 구조는 <strong>illustrative(결정적 합성)</strong>이며 실제 MAGIC의 CADETS 출력이 아니다. 앵커(N=43)만 ORTHRUS 실제 ground-truth다.</li>
+  <li>fan-out 값(k1=4, k2=5 → inflation=25)도 예시로 선택한 값이지 CADETS 그래프에서 실측한 값이 아니다.</li>
+  <li>이 시연이 보이는 것은 <strong>메커니즘의 존재와 방향</strong>까지다. 실측 재현(실제 MAGIC의 CADETS 예측 사용)은 CADETS 원본 확보 시 향후 과제.</li>
+</ul>
+</div>
+
+<p>그렇다면 이 시연은 실제와 이어지는가. 방향성만 일치한다. 시연에서 관찰한 방향 — 2-hop 라벨 팽창 → precision이 near-perfect에서 사실상 0으로 붕괴 — 은 ORTHRUS가 MAGIC에 대해 실제로 측정한 결과와 <strong>정성적으로 일치</strong>한다. MAGIC 자체보고 <strong>CADETS F1 ≈ 97.01%</strong> vs ORTHRUS 엄밀 재평가 <strong>TP=63, FP≈80,000 → P=0.00</strong>. 단, 일치는 방향성에 한정된다 — 시연 값(inflation 25, P=0.0399)이 실제 수치(P=0.00)를 재현·예측하는 것은 아니다. 실제 P=0.00이 더 극단적인 것은 실제 CADETS 그래프의 노드 수·fan-out이 이 예시보다 훨씬 크기 때문으로 추정(미검증).</p>
+
+<h2 id="s5"><span class="no">5</span>사슬을 다시 잇고, 다음 한 걸음</h2>
+
+<p>다섯 층을 걸어왔다. 이제 왜 이게 따로 노는 지식이 아니라 하나의 사슬인지 여섯 개의 고리로 정리하면 이렇다.</p>
+<ol>
+  <li><strong>랜섬웨어 I/O trace(0) → EDR 텔레메트리(1)</strong> — "행위는 숨길 수 없다"는 원리가 랜섬웨어를 넘어 모든 위협으로 일반화된다.</li>
+  <li><strong>시스템 이벤트 로그(1) → 프로비넌스 그래프(3)</strong> — ETW/auditd가 만든 커널 이벤트가 프로비넌스 그래프의 원료다.</li>
+  <li><strong>GNN 부품(2) → PIDS 백본(3)</strong> — GraphSAGE→ThreaTrace·FLASH, GAT→MAGIC, AE→MAGIC·SIGL.</li>
+  <li><strong>동적 그래프 한계(2) → TGNN → stateless 경량화(3)</strong> — GNN 서베이의 "동적 그래프 미비"가 Kairos(TGNN)를 낳고, 그 메모리 부담을 ORTHRUS가 stateless로 덜어낸다.</li>
+  <li><strong>랜섬웨어 오탐 딜레마(0) → alert fatigue·QoA(3)</strong> — 층위 0의 임계선 튜닝 난제가 PIDS의 검수부담 위기로 규모를 키워 재연된다.</li>
+  <li><strong>평가위기 주장(3) → 손으로 검증(4)</strong> — MAGIC 재현(신뢰 밑라인)과 2-hop 팽창의 정량 시연(inflation 25배)이 위기론을 검증한다.</li>
+</ol>
+
+<p>그래서 다음 걸음은 어디인가. 이 스택은 이제 "층위 3의 평가위기를 층위 4에서 실측으로 못박는" 단계로 수렴한다. 그 지렛대로 <strong>FLASH 실측 재현</strong>을 추천한다. 이유는 두 가지다.</p>
+
+<p>첫째, 환경 제약이 GPU나 코드가 아니라 <strong>디스크 용량</strong>(43GB 여유)인데, FLASH는 이미 확보·검증한 <strong>StreamSpot·Unicorn Wget</strong>을 평가셋에 포함해 소규모 데이터로 착수할 수 있는 유일한 후보다. Kairos·ORTHRUS-full은 DARPA 규모 신규 다운로드가 필요해, Phase 1b를 막았던 디스크 게이트에 그대로 걸린다.</p>
+
+<p>둘째, FLASH는 방법론상 <strong>ORTHRUS와 가장 가까운 축</strong>(노드 단위 + 재구성 시도)이라, 이번에 다진 QoA 렌즈(2-hop 이웃 vs 엄밀 라벨)를 illustrative <strong>시연에서 실측으로 승격</strong>시키기에 가장 적합하다. FLASH는 자체보고 CADETS F1≈0.97이 ORTHRUS 엄밀 평가에서 P&lt;0.01(2,394 플래그 중 13 TP)로 붕괴하는, 실측 데이터 포인트를 이미 갖고 있다.</p>
+
+<p>랜섬웨어 I/O trace 한 조각에서 출발한 질문은 결국 이 지점에 도착한다 — near-perfect라 불리던 탐지 성능이 정직한 잣대 앞에서 무너지는 자리, 그리고 그 무너짐을 시연이 아니라 실측으로 못박을 수 있는 자리. 다음 실험은 거기서 시작한다.</p>
+
+<details id="s6">
+  <summary>미확보·한계 (원문 그대로 보존)</summary>
+  <ul>
+    <li><strong>Kairos 자체 정량</strong>(초록만), <strong>Unicorn/ORTHRUS 절대 P/R/F1</strong>, <strong>FLASH 원저 수치</strong>는 직접 미확보(2차 출처 경유). Unicorn은 "StreamSpot 대비 precision/accuracy +24%/+30%" 개선 주장만 확인.</li>
+    <li>provenance IDS 수치는 라벨링 비일관으로 <strong>상호 직접 비교 불가가 기본값</strong>.</li>
+    <li>QoA 시연 수치(inflation 25배, P 0.0399)는 illustrative 합성 구조 기반의 <strong>메커니즘 시연이며 실측 재현이 아니다</strong> — ORTHRUS 실측과 방향성만 일치.</li>
+    <li>MAGIC 재현은 레포 동봉 전처리 아티팩트 기반 — 원시 로그→파서 단계는 미검증.</li>
+    <li>MCC는 동일 데이터셋 내 상대 비교만 유효.</li>
+  </ul>
+</details>
+
+<details id="s7">
+  <summary>출처</summary>
+  <ul>
+    <li>GNN 서베이 — Wu 외, "A Comprehensive Survey on Graph Neural Networks", IEEE TNNLS 32(1), 2021</li>
+    <li>GraphSAGE — Hamilton 외, NIPS 2017</li>
+    <li>GAT — Veličković 외, ICLR 2018</li>
+    <li>MAGIC — <a href="https://arxiv.org/abs/2310.09831">arXiv:2310.09831</a> · 코드 <a href="https://github.com/FDUDSDE/MAGIC">github.com/FDUDSDE/MAGIC</a></li>
+    <li>Kairos — <a href="https://arxiv.org/abs/2308.05034">arXiv:2308.05034</a></li>
+    <li>ORTHRUS — <a href="https://tfjmp.org/publications/2025-usenixsec.pdf">tfjmp.org/publications/2025-usenixsec.pdf</a></li>
+    <li>ThreaTrace — <a href="https://arxiv.org/abs/2111.04333">arXiv:2111.04333</a></li>
+    <li>SIGL — <a href="https://arxiv.org/abs/2008.11533">arXiv:2008.11533</a></li>
+    <li>FLASH — <a href="https://dartlab.org/assets/pdf/flash.pdf">dartlab.org/assets/pdf/flash.pdf</a></li>
+    <li>Toward Practical and Usable Prov-IDS — USENIX ;login: 2025</li>
+  </ul>
+</details>
+
+<div class="post-nav">
+  <div class="prev">
+    <span class="dir">← 이전 글</span>
+    <a href="orthrus-qoa-provenance-ids.html">ORTHRUS — Provenance IDS의 귀속 품질(QoA) 문제</a>
+  </div>
+</div>
+
+  </article>
+</main>
+<footer class="site-footer">
+  <span>© songhyun9999</span>
+  <a href="../archive.html">← 전체 글</a>
+</footer>
+</body>
+</html>
