@@ -98,10 +98,10 @@
           <circle cx="820" cy="48" r="14" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
         </g>
         <g text-anchor="middle" font-size="12.5" font-weight="600" dominant-baseline="central">
-          <text x="40" y="49" fill="#14181d">0</text>
+          <text x="40" y="49" fill="var(--bg)">0</text>
           <text x="280" y="49" fill="var(--muted)">1</text>
           <text x="460" y="49" fill="var(--muted)">2</text>
-          <text x="640" y="49" fill="#14181d">3</text>
+          <text x="640" y="49" fill="var(--bg)">3</text>
           <text x="820" y="49" fill="var(--muted)">4</text>
         </g>
         <g text-anchor="middle">
@@ -258,7 +258,7 @@ $$x *_G g_\theta = U\, g_\theta\, U^\top x \quad \text{(식 5)}$$
       </g>
       <text x="140" y="110" font-size="10.5" fill="var(--muted)" text-anchor="middle">read</text>
       <circle cx="75" cy="120" r="22" fill="var(--accent)"/>
-      <text x="75" y="121" font-size="11" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">bash</text>
+      <text x="75" y="121" font-size="11" font-weight="600" fill="var(--bg)" text-anchor="middle" dominant-baseline="central">bash</text>
       <rect x="180" y="100" width="100" height="40" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.6"/>
       <text x="230" y="121" font-size="10" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">config.ini</text>
 
@@ -270,9 +270,9 @@ $$x *_G g_\theta = U\, g_\theta\, U^\top x \quad \text{(식 5)}$$
       <text x="500" y="150" font-size="10.5" fill="var(--warn)" text-anchor="middle">connect</text>
 
       <circle cx="420" cy="65" r="20" fill="var(--accent)"/>
-      <text x="420" y="66" font-size="10" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">powershell</text>
+      <text x="420" y="66" font-size="10" font-weight="600" fill="var(--bg)" text-anchor="middle" dominant-baseline="central">powershell</text>
       <circle cx="420" cy="180" r="20" fill="var(--accent)"/>
-      <text x="420" y="181" font-size="10" font-weight="600" fill="#14181d" text-anchor="middle" dominant-baseline="central">cmd.exe</text>
+      <text x="420" y="181" font-size="10" font-weight="600" fill="var(--bg)" text-anchor="middle" dominant-baseline="central">cmd.exe</text>
       <path d="M 570 108 L 610 140 L 570 172 L 530 140 Z" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.8"/>
       <text x="570" y="141" font-size="9.5" fill="var(--ink)" text-anchor="middle" dominant-baseline="central">C2:443</text>
     </svg>
@@ -370,6 +370,11 @@ $$M = N \times (1 + k_1 + k_1 k_2) = 1 + 4 + 20 = 25 \times$$
 <figure>
   <div class="fig-row">
     <svg width="640" height="260" viewBox="0 0 640 260" role="img" aria-label="2-hop 라벨 팽창 메커니즘 시각화: 중앙의 엄밀 노드 N=43(강조 원)에서 1-hop 이웃 4개(k1=4), 2-hop 이웃 20개(k1×k2=20)로 뻗어나가는 트리, 총 M=1+4+20=25배 팽창. 오른쪽에는 precision이 0.9972에서 0.0399로 붕괴하는 대비가 표시됨">
+      <defs>
+        <marker id="inf-arr-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warn)"/>
+        </marker>
+      </defs>
       <g stroke="var(--muted)" stroke-width="1.4">
         <line x1="150" y1="140" x2="80" y2="70"/>
         <line x1="150" y1="140" x2="80" y2="210"/>
@@ -377,7 +382,7 @@ $$M = N \times (1 + k_1 + k_1 k_2) = 1 + 4 + 20 = 25 \times$$
         <line x1="150" y1="140" x2="230" y2="210"/>
       </g>
       <circle cx="150" cy="140" r="24" fill="var(--accent)"/>
-      <text x="150" y="141" font-size="12" font-weight="700" fill="#14181d" text-anchor="middle" dominant-baseline="central">N=43</text>
+      <text x="150" y="141" font-size="12" font-weight="700" fill="var(--bg)" text-anchor="middle" dominant-baseline="central">N=43</text>
 
       <g fill="var(--muted)">
         <circle cx="80" cy="70" r="9"/>
@@ -399,7 +404,7 @@ $$M = N \times (1 + k_1 + k_1 k_2) = 1 + 4 + 20 = 25 \times$$
       <text x="480" y="72" font-size="11" fill="var(--muted)" text-anchor="middle">2-hop 이웃 라벨</text>
       <text x="480" y="96" font-size="18" font-weight="700" fill="var(--accent)" text-anchor="middle">precision 0.9972</text>
 
-      <line x1="480" y1="118" x2="480" y2="150" stroke="var(--warn)" stroke-width="1.8" marker-end="url(#chain-arr-warn)"/>
+      <line x1="480" y1="118" x2="480" y2="150" stroke="var(--warn)" stroke-width="1.8" marker-end="url(#inf-arr-warn)"/>
 
       <rect x="370" y="158" width="220" height="60" rx="10" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.6"/>
       <text x="480" y="180" font-size="11" fill="var(--muted)" text-anchor="middle">엄밀 노드 라벨</text>

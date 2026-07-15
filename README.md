@@ -39,7 +39,8 @@ tools/check_post.py   발행 전 계약 검증기 (아래 규약 5)
    기존 최신 글의 "다음 글"을 새 글로 갱신한다 (새 글만 정상인 반쪽 내비 금지).
 5. **발행 전 검증**: `python tools/check_post.py <slug>` 실행 — 플레이스홀더·KaTeX 일관성·
    목록 4곳 반영·index 5개 제한·RFC822 pubDate·읽기 시간·그림 접근성(figcaption/aria-label)·
-   og:url을 기계 검사한다. **전부 PASS일 때만 push**.
+   og:url·스타일 규약(SVG 색 CSS 변수만, 인라인 style은 overflow 스크롤 래퍼만,
+   SVG `url(#)` 참조 자기완결)을 기계 검사한다. **전부 PASS일 때만 push**.
 6. 커밋 메시지: `post: <제목>` / 디자인 변경은 `design: …`.
 
 ## 품질 규약 (긴 글 = 본문 h2가 5개 이상인 글)

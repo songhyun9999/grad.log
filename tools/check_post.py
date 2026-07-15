@@ -11,6 +11,9 @@
   6) 읽기 시간 — 한글자수/500 + 영단어수/200 (분, 반올림, 최소 1) ↔ meta '약 N분' 일치
   7) 그림 접근성 — figure마다 figcaption, svg마다 aria-label·viewBox
   8) og:url이 posts/<slug>.html과 일치
+  9) 스타일 규약 — SVG 색은 CSS 변수만(hex 등 리터럴 금지),
+     인라인 style은 overflow 스크롤 래퍼(overflow-x:auto·max-width:100%)만 허용,
+     url(#id) 참조는 같은 SVG 안에 정의돼야 함(크로스-SVG 참조 금지)
 
 전부 PASS면 exit 0, 하나라도 FAIL이면 exit 1. stdlib만 사용.
 """
@@ -133,6 +136,36 @@ def main():
     want = f"posts/{slug}.html"
     ok = bool(og) and og.group(1).endswith(want)
     check(ok, "og:url ↔ slug 일치", og.group(1) if og else "og:url 없음")
+
+    # 9a) SVG 색은 CSS 변수만 (fill/stroke에 hex 등 리터럴 금지)
+    svg_blocks = re.findall(r"<svg\b.*?</svg>", article, flags=re.S)
+    bad_colors = []
+    for block in svg_blocks:
+        for attr, val in re.findall(r'\b(fill|stroke)="([^"]+)"', block):
+            if not (val.startswith("var(") or val in ("none", "transparent", "currentColor")):
+                bad_colors.append(f'{attr}="{val}"')
+    check(not bad_colors, "SVG 색 CSS 변수만 사용",
+          "" if not bad_colors else f"리터럴 색 {len(bad_colors)}건: {', '.join(sorted(set(bad_colors)))}")
+
+    # 9b) 인라인 style은 overflow 스크롤 래퍼만 허용
+    allowed_decls = {"overflow-x:auto", "max-width:100%"}
+    bad_styles = []
+    for sty in re.findall(r'style="([^"]*)"', article):
+        decls = {d.strip().replace(" ", "") for d in sty.split(";") if d.strip()}
+        if not decls <= allowed_decls:
+            bad_styles.append(sty)
+    check(not bad_styles, "인라인 style 스크롤 래퍼만",
+          "" if not bad_styles else f"허용 외 인라인 style {len(bad_styles)}건: " + "; ".join(bad_styles[:3]))
+
+    # 9c) url(#id) 참조는 같은 SVG 안에 정의 (크로스-SVG 참조 금지)
+    dangling = []
+    for block in svg_blocks:
+        ids = set(re.findall(r'\bid="([^"]+)"', block))
+        for ref in re.findall(r"url\(#([^)]+)\)", block):
+            if ref not in ids:
+                dangling.append(f"#{ref}")
+    check(not dangling, "SVG url(#) 참조 자기완결",
+          "" if not dangling else f"같은 SVG에 정의 없는 참조: {', '.join(sorted(set(dangling)))}")
 
     # 보고
     fails = [r for r in results if not r[0]]
