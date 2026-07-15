@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MITRE ATT&amp;CK 제대로 읽기 — 공격자를 말하는 공통 언어 · grad.log</title>
+  <meta name="description" content="공격자 행위를 기술하는 공통 언어 ATT&amp;CK을 역사·구조·v19의 변화(Defense Evasion 분리)까지 정리한다. EDR 탐지 룰이 매핑되는 그 프레임워크를 숫자와 함께 짚어본다.">
+  <meta property="og:title" content="MITRE ATT&amp;CK 제대로 읽기 — 공격자를 말하는 공통 언어">
+  <meta property="og:description" content="공격자 행위를 기술하는 공통 언어 ATT&amp;CK을 역사·구조·v19의 변화(Defense Evasion 분리)까지 정리한다. EDR 탐지 룰이 매핑되는 그 프레임워크를 숫자와 함께 짚어본다.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/mitre-attack-common-language.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="site-name" href="../index.html">grad.log</a>
+  <nav class="site-nav">
+    <a href="../index.html">Home</a>
+    <a href="../archive.html">Archive</a>
+    <a href="../about.html">About</a>
+  </nav>
+</header>
+<main>
+  <header class="post-header">
+    <div class="eyebrow">프레임워크 정리 · MITRE ATT&amp;CK</div>
+    <h1>MITRE ATT&amp;CK 제대로 읽기 — 공격자를 말하는 공통 언어</h1>
+    <div class="meta">
+      <time datetime="2026-07-15">2026-07-15</time>
+      <span>약 7분</span>
+      <span class="tag">MITRE ATT&amp;CK</span><span class="tag">위협 인텔리전스</span><span class="tag">탐지 엔지니어링</span><span class="tag">EDR</span><span class="tag">보안 프레임워크</span>
+    </div>
+    <p class="lede">공격자 행위를 기술하는 공통 언어 ATT&amp;CK을 역사·구조·v19의 변화(Defense Evasion 분리)까지 정리한다. EDR 탐지 룰이 매핑되는 그 프레임워크를 숫자와 함께 짚어본다.</p>
+  </header>
+  <article>
+
+<div class="toc">
+  <div class="toc-title">목차</div>
+  <ol>
+    <li><a href="#s1">1. 왜 "공통 언어"가 필요한가</a></li>
+    <li><a href="#s2">2. ATT&amp;CK이 뭐길래 — 2013년, 하나의 실험에서</a></li>
+    <li><a href="#s3">3. 구조 ① 왜(why)와 어떻게(how)의 계층</a></li>
+    <li><a href="#s4">4. 구조 ② 세 매트릭스와 숫자로 본 규모</a></li>
+    <li><a href="#s5">5. v19의 큰 사건 — Defense Evasion 분리</a></li>
+    <li><a href="#s6">6. 네 가지 용도</a></li>
+    <li><a href="#s7">7. 데이터로서의 ATT&amp;CK</a></li>
+    <li><a href="#s8">8. 한계와 다음 한 걸음</a></li>
+  </ol>
+</div>
+
+<p>EDR을 정리하던 글에서 나는 IOA(행위 기반 탐지)가 "ATT&amp;CK 기법에 매핑된다"고 한 줄로 지나쳤다. 그런데 그 문장은 뒤집어 보면 이상하다. 서로 다른 회사가 만든 EDR, 서로 다른 팀이 쓴 위협 보고서, 서로 다른 레드팀의 시나리오가 <strong>같은 기법을 가리키는지 어떻게 알까?</strong></p>
+
+<p>답은 하나의 사전을 공유하기 때문이다. 이 글은 그 사전, <strong>MITRE ATT&amp;CK</strong>을 처음부터 정리한다. 무엇이고, 어떻게 생겼고, 최근 v19에서 무엇이 바뀌었는지까지.</p>
+
+<div class="stat-row">
+  <div class="stat">
+    <div class="stat-value">222 <span class="vs">·</span> <span class="dim">475</span></div>
+    <div class="stat-label">Enterprise가 담은 Technique · Sub-technique 수</div>
+    <div class="stat-context">여기에 Tactics 15·Groups 174·Software 821까지 더해 v19 기준 하나의 지식베이스를 이룬다.</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">1 <span class="vs">→</span> <span class="dim">2</span></div>
+    <div class="stat-label">Defense Evasion 전술이 갈라진 결과</div>
+    <div class="stat-context">TA0005 Stealth · TA0112 Defense Impairment 둘로 분리되며 Enterprise 전술이 15개가 됐다(v19.0, 2026-04-28).</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">2013 <span class="vs">→</span> <span class="dim">v19.1</span></div>
+    <div class="stat-label">FMX 연구 프로젝트에서 오늘의 표준까지</div>
+    <div class="stat-context">13년째 이어지는 무료 공개 지식베이스 — 지금은 Enterprise·Mobile·ICS 3개 매트릭스로 확장됐다.</div>
+  </div>
+</div>
+
+<h2 id="s1"><span class="no">1</span>왜 "공통 언어"가 필요한가</h2>
+
+<p>보안에서 같은 공격을 두고 사람마다 다르게 부른다. 누구는 "메모리에서 자격증명을 훔쳤다"고 하고, 누구는 "LSASS 덤프"라고 하고, 또 누구는 그냥 "크리덴셜 탈취"라고 한다. 다 맞는 말이지만, 통계를 내거나 방어 커버리지를 비교하려는 순간 이 제각각의 표현이 벽이 된다.</p>
+
+<p>ATT&amp;CK은 이 벽을 없애려는 시도다. 공격자의 행동에 <strong>고유 ID와 표준 이름</strong>을 붙여, 탐지 팀·인텔 분석가·레드팀이 같은 단어로 대화하게 만든다. ATT&amp;CK이 스스로를 소개하는 문장이 이 목적을 압축한다.</p>
+
+<div class="note"><strong>ATT&amp;CK의 자기소개</strong> — "A globally-accessible knowledge base of adversary tactics and techniques based on real-world observations."</div>
+
+<p>핵심은 마지막 구절, <strong>real-world observations</strong>다. 이론적 분류가 아니라 실제로 관측된 공격 행위를 모은 지식베이스라는 뜻이다.</p>
+
+<h2 id="s2"><span class="no">2</span>ATT&amp;CK이 뭐길래 — 2013년, 하나의 실험에서</h2>
+
+<p>ATT&amp;CK은 비영리 연구기관 <strong>MITRE</strong>가 <strong>2013년</strong>부터 개발했다. 출발점은 APT(지능형 지속 위협)가 Windows 엔터프라이즈 네트워크에서 쓰는 공통 TTP를 문서화하려는 필요였다. 더 구체적으로는 <strong>FMX</strong>라는 연구 프로젝트에서 비롯됐는데, 이는 엔드포인트 텔레메트리와 분석(analytics)으로 침해 이후(post-compromise) 탐지를 개선하려던 연구다. (FMX는 흔히 "Fort Meade Experiment"로 알려져 있으나 이번에 읽은 페이지에서 명칭 자체를 재확인하진 못했다.)</p>
+
+<p>이름값도 한다. ATT&amp;CK은 통상 <em>Adversarial Tactics, Techniques, and Common Knowledge</em>의 약어로 소개되지만, 이 풀이 역시 이번 출처에서 직접 확보하진 못했으니 참고만 하자. 중요한 건 성격이다. <strong>누구나 무료로</strong> 접근할 수 있고, MITRE의 "더 안전한 세상"이라는 미션 아래 공개된 자산이라는 점.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="680" height="170" viewBox="0 0 680 170" role="img" aria-label="가로 타임라인: 왼쪽 2013 — FMX 연구 프로젝트(엔드포인트 텔레메트리 + analytics로 post-compromise 탐지 연구) 노드에서 시작해 오른쪽 오늘 — v19.1, 3개 매트릭스, 전 세계 표준 노드로 화살표가 이어짐. 시작점과 끝점을 강조 표시. 중앙에 MITRE · 무료 공개 캡션.">
+      <defs>
+        <marker id="tl-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+      <text x="340" y="40" font-size="11" fill="var(--muted)" text-anchor="middle">MITRE · 무료 공개</text>
+
+      <line x1="250" y1="100" x2="430" y2="100" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#tl-arr)"/>
+
+      <rect x="20" y="55" width="230" height="90" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="135" y="80" font-size="16" font-weight="700" fill="var(--accent)" text-anchor="middle">2013</text>
+      <text x="135" y="104" font-size="10.5" fill="var(--ink)" text-anchor="middle">FMX 연구 프로젝트</text>
+      <text x="135" y="120" font-size="9" fill="var(--muted)" text-anchor="middle">(엔드포인트 텔레메트리 +</text>
+      <text x="135" y="133" font-size="9" fill="var(--muted)" text-anchor="middle">analytics로 post-compromise 탐지)</text>
+
+      <rect x="430" y="55" width="230" height="90" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="545" y="80" font-size="16" font-weight="700" fill="var(--accent)" text-anchor="middle">오늘</text>
+      <text x="545" y="104" font-size="10.5" fill="var(--ink)" text-anchor="middle">v19.1</text>
+      <text x="545" y="120" font-size="9" fill="var(--muted)" text-anchor="middle">3개 매트릭스</text>
+      <text x="545" y="133" font-size="9" fill="var(--muted)" text-anchor="middle">전 세계 표준</text>
+    </svg>
+  </div>
+  <figcaption>2013년 FMX 연구 프로젝트에서 시작해 오늘 v19.1(3개 매트릭스, 전 세계 표준)에 이르는 타임라인. 시작점과 끝점을 강조 표시했다.</figcaption>
+</figure>
+
+<h2 id="s3"><span class="no">3</span>구조 ①: 왜(why)와 어떻게(how)의 계층</h2>
+
+<p>ATT&amp;CK의 뼈대는 네 계층이다. 위에서 아래로 점점 구체적이 된다.</p>
+<ul>
+  <li><strong>Tactics</strong> — 공격자가 <em>왜</em> 그 행동을 하는가. 전술적 목표다. 예: 자격증명 확보(credential access).</li>
+  <li><strong>Techniques</strong> — 그 목표를 <em>어떻게</em> 달성하는가. 예: 자격증명 덤핑(credential dumping).</li>
+  <li><strong>Sub-techniques</strong> — 기법의 더 세분화된 행위 서술.</li>
+  <li><strong>Procedures</strong> — 실제 공격에서 관측된 구체적 구현.</li>
+</ul>
+
+<p>문서에서 이 셋(Tactics·Techniques·Procedures)의 앞글자를 딴 게 바로 우리가 흔히 쓰는 <strong>TTP</strong>다. ATT&amp;CK은 이 TTP를 "공격자 행위를 분류하는 세 계층"으로 정의한다. 전술이 <em>왜</em>라면 기법은 <em>어떻게</em>이고, 프로시저는 그 <em>어떻게</em>가 야생에서 실제로 어떻게 나타났는지를 붙잡는다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="640" height="300" viewBox="0 0 640 300" role="img" aria-label="위에서 아래로 좁아지는 4단 피라미드: Tactics — WHY(전술적 목표, 예시 배지 Credential Access), Techniques — HOW(구체적 행동, 예시 배지 Credential Dumping), Sub-techniques — 세부 행위, Procedures — 실제 관측 구현. 왼쪽에 위로 갈수록 추상적, 아래로 갈수록 구체적임을 나타내는 화살표.">
+      <defs>
+        <marker id="pyr-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+      <text x="15" y="14" font-size="9" fill="var(--muted)" text-anchor="middle">추상적</text>
+      <line x1="15" y1="25" x2="15" y2="278" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#pyr-arr)"/>
+      <text x="15" y="294" font-size="9" fill="var(--muted)" text-anchor="middle">구체적</text>
+
+      <rect x="40" y="20" width="560" height="54" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="60" y="52" font-size="13" font-weight="700" fill="var(--ink)">Tactics — WHY (전술적 목표)</text>
+      <rect x="460" y="34" width="120" height="26" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+      <text x="520" y="51" font-size="9.5" fill="var(--muted)" text-anchor="middle">Credential Access</text>
+
+      <rect x="90" y="90" width="460" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+      <text x="110" y="122" font-size="13" font-weight="700" fill="var(--ink)">Techniques — HOW (구체적 행동)</text>
+      <rect x="390" y="104" width="140" height="26" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+      <text x="460" y="121" font-size="9.5" fill="var(--muted)" text-anchor="middle">Credential Dumping</text>
+
+      <rect x="140" y="160" width="360" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+      <text x="160" y="192" font-size="13" font-weight="700" fill="var(--ink)">Sub-techniques — 세부 행위</text>
+
+      <rect x="190" y="230" width="260" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+      <text x="210" y="262" font-size="12.5" font-weight="700" fill="var(--ink)">Procedures — 실제 관측 구현</text>
+    </svg>
+  </div>
+  <figcaption>Tactics(왜) → Techniques(어떻게) → Sub-techniques → Procedures로 내려가며 점점 구체화되는 4단 계층. Tactics 예시로 Credential Access, Techniques 예시로 Credential Dumping을 배지로 표시했다.</figcaption>
+</figure>
+
+<h2 id="s4"><span class="no">4</span>구조 ②: 세 매트릭스와 숫자로 본 규모</h2>
+
+<p>ATT&amp;CK은 하나가 아니라 도메인별 매트릭스 셋으로 나뉜다. <strong>Enterprise</strong>, <strong>Mobile</strong>, <strong>ICS</strong>(산업 제어 시스템)다. Enterprise가 커버하는 범위만 봐도 넓다. Windows·macOS·Linux는 기본이고 네트워크 장비, 컨테이너, 클라우드(IaaS·SaaS·오피스 스위트·ID 공급자)까지 포함한다. Mobile은 Android와 iOS를 다룬다.</p>
+
+<p>규모를 숫자로 보면 왜 이게 "지식베이스"라 불리는지 실감난다. 아래는 최신 콘텐츠 <strong>v19</strong> 기준 매트릭스별 집계다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>매트릭스</th><th>Tactics</th><th>Techniques</th><th>Sub-techniques</th><th>Groups</th><th>Software</th><th>Detection Strategies</th></tr>
+<tr class="hl-row"><td>Enterprise</td><td>15</td><td>222</td><td>475</td><td>174</td><td>821</td><td>697</td></tr>
+<tr><td>Mobile</td><td>12</td><td>77</td><td>47</td><td>20</td><td>126</td><td>124</td></tr>
+<tr><td>ICS</td><td>12</td><td>79</td><td>18</td><td>14</td><td>23</td><td>97</td></tr>
+</table>
+</div>
+
+<p>Enterprise만 따로 떼어 보면 스케일이 더 선명하다.</p>
+
+<div class="note"><strong>Enterprise ATT&amp;CK (v19)</strong> — 15 Tactics · 222 Techniques · 475 Sub-techniques · 44 Mitigations · 1,758 Analytics · 106 Data Components.</div>
+
+<p>참고로 랜딩 페이지의 라이브 매트릭스는 전술별 기법 수를 개별로 보여주는데(예: Discovery 34개, Execution 20개), 이는 스냅샷 표시값이라 총계는 위 222라는 릴리스 기준 수치를 따르는 게 맞다.</p>
+
+<h2 id="s5"><span class="no">5</span>v19의 큰 사건: Defense Evasion이 둘로 쪼개졌다</h2>
+
+<p><strong>v19.0은 2026년 4월 28일에 릴리스</strong>됐고(이후 minor 업데이트로 v19.1), 이번 판의 헤드라인 변화는 Enterprise 전술 구조 자체를 건드렸다. 오랫동안 하나였던 <strong>Defense Evasion 전술이 Stealth와 Defense Impairment 둘로 분리</strong>된 것이다.</p>
+
+<p>이게 왜 큰일이냐면, 전술은 ATT&amp;CK 계층의 최상단이라 그 아래 기법·룰·커버리지 매핑이 전부 여기에 매달려 있기 때문이다. 전술 하나가 쪼개지면 방어 팀의 커버리지 지도도 다시 그려야 한다. 그래서 Enterprise 전술은 이제 15개다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>#</th><th>ID</th><th>Tactic</th></tr>
+<tr><td>1</td><td>TA0043</td><td>Reconnaissance</td></tr>
+<tr><td>2</td><td>TA0042</td><td>Resource Development</td></tr>
+<tr><td>3</td><td>TA0001</td><td>Initial Access</td></tr>
+<tr><td>4</td><td>TA0002</td><td>Execution</td></tr>
+<tr><td>5</td><td>TA0003</td><td>Persistence</td></tr>
+<tr><td>6</td><td>TA0004</td><td>Privilege Escalation</td></tr>
+<tr class="hl-row"><td>7</td><td>TA0005</td><td>Stealth</td></tr>
+<tr class="hl-row"><td>8</td><td>TA0112</td><td>Defense Impairment</td></tr>
+<tr><td>9</td><td>TA0006</td><td>Credential Access</td></tr>
+<tr><td>10</td><td>TA0007</td><td>Discovery</td></tr>
+<tr><td>11</td><td>TA0008</td><td>Lateral Movement</td></tr>
+<tr><td>12</td><td>TA0009</td><td>Collection</td></tr>
+<tr><td>13</td><td>TA0011</td><td>Command and Control</td></tr>
+<tr><td>14</td><td>TA0010</td><td>Exfiltration</td></tr>
+<tr><td>15</td><td>TA0040</td><td>Impact</td></tr>
+</table>
+</div>
+
+<p>7·8번이 이번에 갈라진 두 전술이다. 같은 판에서 ICS 매트릭스에는 sub-technique이 새로 추가됐고, Mobile에는 detection strategy 개념이 처음 도입됐다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="680" height="220" viewBox="0 0 680 220" role="img" aria-label="분리 다이어그램: 왼쪽 회색 박스 Defense Evasion(v18까지)에서 화살표가 갈라져 오른쪽 두 박스 Stealth(TA0005)와 Defense Impairment(TA0112)로 이어짐. 두 결과 박스는 강조색으로 표시. 아래 캡션 v19.0 · 2026-04-28.">
+      <defs>
+        <marker id="split-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+      <path d="M 210,115 C 320,115 320,55 440,55" fill="none" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#split-arr)"/>
+      <path d="M 210,115 C 320,115 320,165 440,165" fill="none" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#split-arr)"/>
+
+      <rect x="20" y="75" width="190" height="80" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+      <text x="115" y="110" font-size="12.5" font-weight="700" fill="var(--muted)" text-anchor="middle">Defense Evasion</text>
+      <text x="115" y="128" font-size="10.5" fill="var(--muted)" text-anchor="middle">(v18까지)</text>
+
+      <rect x="440" y="20" width="220" height="70" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="550" y="48" font-size="14" font-weight="700" fill="var(--accent)" text-anchor="middle">Stealth</text>
+      <text x="550" y="66" font-size="10.5" fill="var(--muted)" text-anchor="middle">TA0005</text>
+
+      <rect x="440" y="130" width="220" height="70" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="550" y="155" font-size="13" font-weight="700" fill="var(--accent)" text-anchor="middle">Defense Impairment</text>
+      <text x="550" y="175" font-size="10.5" fill="var(--muted)" text-anchor="middle">TA0112</text>
+
+      <text x="340" y="212" font-size="11" fill="var(--muted)" text-anchor="middle">v19.0 · 2026-04-28</text>
+    </svg>
+  </div>
+  <figcaption>Defense Evasion 전술이 v19.0(2026-04-28)에서 Stealth(TA0005)와 Defense Impairment(TA0112) 둘로 분리되는 다이어그램.</figcaption>
+</figure>
+
+<h2 id="s6"><span class="no">6</span>그래서 이걸 어디에 쓰나 — 네 가지 용도</h2>
+
+<p>ATT&amp;CK을 "공격 기법 백과사전"으로만 보면 절반만 본 것이다. 진짜 값어치는 이 공통 언어 위에서 굴러가는 작업들에 있다. MITRE는 활용처를 네 범주로 정리한다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>용도</th><th>하는 일</th></tr>
+<tr class="hl-row"><td>Detections and Analytics</td><td>공격자가 쓰는 기법을 탐지하는 analytics를 개발한다</td></tr>
+<tr><td>Threat Intelligence</td><td>위협 인텔을 구조화·비교·분석할 공통 언어를 준다</td></tr>
+<tr><td>Adversary Emulation &amp; Red Teaming</td><td>특정 위협을 모사하고 작전을 계획한다</td></tr>
+<tr class="hl-row"><td>Assessment and Engineering</td><td>조직 역량을 평가하고 엔지니어링 결정을 이끈다</td></tr>
+</table>
+</div>
+
+<p>앞머리에서 꺼낸 EDR 이야기가 여기서 이어진다. EDR의 행위 탐지 룰을 ATT&amp;CK 기법에 매핑하는 일은 1번(Detections and Analytics)에, "우리는 어느 기법을 못 막고 있나"를 따지는 갭 평가는 4번(Assessment)에 해당한다. (다만 "EDR 룰 매핑"이라는 정확한 표현은 원문 문구가 아니라 내 해석이다.) 하나의 프레임워크가 탐지·인텔·레드팀·평가를 같은 좌표계 위에 올려놓는 셈이다.</p>
+
+<h2 id="s7"><span class="no">7</span>데이터로서의 ATT&amp;CK — STIX, TAXII, Navigator</h2>
+
+<p>ATT&amp;CK이 웹사이트로만 존재했다면 이 정도 생태계는 못 만들었을 것이다. 핵심은 <strong>기계가 읽는 데이터</strong>로도 제공된다는 점이다. 덕분에 도구들이 이 지식베이스를 프로그램으로 소비하고 확장한다.</p>
+
+<div class="tbl-wrap">
+<table>
+<tr><th>형태/도구</th><th>정체</th></tr>
+<tr><td>STIX 2.0 / 2.1</td><td>CTI 교환용 언어·직렬화 포맷. GitHub repo + <code>stix2</code> 라이브러리</td></tr>
+<tr><td>TAXII 2.1</td><td>인텔 자동 교환 프로토콜. 공식 ATT&amp;CK TAXII 서버가 API 제공</td></tr>
+<tr><td>JSON / Excel</td><td>STIX가 JSON 기반이라 원시 접근 가능. 사람용 Excel(v19.1)도 제공</td></tr>
+<tr><td>ATT&amp;CK Navigator</td><td>매트릭스에 주석·탐색하는 웹 도구 — 커버리지 시각화·계획</td></tr>
+<tr><td>mitreattack-python / Workbench</td><td>데이터 질의·처리 스크립트 / 지식베이스 탐색·확장</td></tr>
+</table>
+</div>
+
+<p>정리하면, ATT&amp;CK은 "읽는 문서"이자 "질의하는 데이터셋"이다. Navigator로 우리 팀의 탐지 커버리지를 색칠해 보고, TAXII로 최신 기법을 파이프라인에 끌어오고, STIX JSON을 직접 파싱해 분석에 쓸 수 있다.</p>
+
+<h2 id="s8"><span class="no">8</span>한계와 다음 한 걸음</h2>
+
+<div class="note warn"><strong>한계 — 만능은 아니다</strong>: ATT&amp;CK은 강력하지만 만능은 아니다. 흔히 지적되는 점은 <strong>"매트릭스를 다 칠했다 = 잘 막고 있다"가 아니라는 것</strong>이다. 커버리지의 넓이와 탐지의 품질은 다른 문제이고, 어떤 행위를 어느 기법에 매핑할지에는 주관이 들어간다. (다만 이 한계론은 이번에 읽은 ATT&amp;CK 페이지들에서 직접 확인한 서술이 아니라, 일반적으로 오가는 지적임을 밝혀둔다.)</div>
+
+<p>그럼에도 출발점으로서 ATT&amp;CK의 값어치는 분명하다. 공격을 같은 단어로 말하게 해준다는 것, 그 하나만으로도 탐지·인텔·평가가 서로 대화할 수 있게 된다. 다음 걸음으로 나는 <strong>Navigator를 열어 익숙한 EDR 탐지 룰 하나를 골라 어느 기법(Technique ID)에 앉는지 직접 매핑해 볼</strong> 생각이다. 프레임워크는 읽을 때가 아니라 내 데이터에 얹을 때 비로소 손에 잡히니까.</p>
+
+<div class="post-nav">
+  <div class="prev">
+    <span class="dir">← 이전 글</span>
+    <a href="realtime-detection-ransomware-to-orthrus.html">랜섬웨어 I/O 한 조각에서 ORTHRUS 평가위기까지 — 실시간 탐지 연구의 사슬을 따라가다</a>
+  </div>
+</div>
+
+  </article>
+</main>
+<footer class="site-footer">
+  <span>© songhyun9999</span>
+  <a href="../archive.html">← 전체 글</a>
+</footer>
+</body>
+</html>
