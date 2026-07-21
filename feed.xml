@@ -8,6 +8,13 @@
   <atom:link href="https://songhyun9999.github.io/grad.log/feed.xml" rel="self" type="application/rss+xml"/>
   <!-- items:start (새 글은 이 줄 바로 아래에 추가, 최신이 위) -->
   <item>
+    <title>GCN 논문 읽기: 스펙트럴 그래프 합성곱을 한 줄로 접는 법</title>
+    <link>https://songhyun9999.github.io/grad.log/posts/gcn-spectral-graph-convolution.html</link>
+    <guid>https://songhyun9999.github.io/grad.log/posts/gcn-spectral-graph-convolution.html</guid>
+    <pubDate>Tue, 21 Jul 2026 12:00:00 +0900</pubDate>
+    <description>Kipf &amp; Welling의 GCN(ICLR 2017)을 정리 — 스펙트럴 합성곱을 Chebyshev → K=1 → renormalization의 4단계 근사로 접어 한 줄 전파 규칙을 얻는 유도, 실험 하이라이트, oversmoothing·transductive 한계, GNN 계보에서의 위치.</description>
+  </item>
+  <item>
     <title>MITRE ATT&amp;CK 제대로 읽기 — 공격자를 말하는 공통 언어</title>
     <link>https://songhyun9999.github.io/grad.log/posts/mitre-attack-common-language.html</link>
     <guid>https://songhyun9999.github.io/grad.log/posts/mitre-attack-common-language.html</guid>

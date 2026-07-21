@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GCN 논문 읽기: 스펙트럴 그래프 합성곱을 한 줄로 접는 법 · grad.log</title>
+  <meta name="description" content="Kipf &amp; Welling의 GCN(ICLR 2017)을 정리 — 스펙트럴 합성곱을 Chebyshev → K=1 → renormalization의 4단계 근사로 접어 한 줄 전파 규칙을 얻는 유도, 실험 하이라이트, oversmoothing·transductive 한계, GNN 계보에서의 위치.">
+  <meta property="og:title" content="GCN 논문 읽기: 스펙트럴 그래프 합성곱을 한 줄로 접는 법">
+  <meta property="og:description" content="Kipf &amp; Welling의 GCN(ICLR 2017)을 정리 — 스펙트럴 합성곱을 Chebyshev → K=1 → renormalization의 4단계 근사로 접어 한 줄 전파 규칙을 얻는 유도, 실험 하이라이트, oversmoothing·transductive 한계, GNN 계보에서의 위치.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/gcn-spectral-graph-convolution.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+</head>
+<body>
+<header class="site-header">
+  <a class="site-name" href="../index.html">grad.log</a>
+  <nav class="site-nav">
+    <a href="../index.html">Home</a>
+    <a href="../archive.html">Archive</a>
+    <a href="../about.html">About</a>
+  </nav>
+</header>
+<main>
+  <header class="post-header">
+    <div class="eyebrow">논문 리뷰 · ICLR 2017</div>
+    <h1>GCN 논문 읽기: 스펙트럴 그래프 합성곱을 한 줄로 접는 법</h1>
+    <div class="meta">
+      <time datetime="2026-07-21">2026-07-21</time>
+      <span>약 8분</span>
+      <span class="tag">GNN</span><span class="tag">GCN</span><span class="tag">paper-review</span>
+    </div>
+    <p class="lede">Kipf &amp; Welling의 GCN(ICLR 2017)을 정리 — 스펙트럴 합성곱을 Chebyshev → K=1 → renormalization의 4단계 근사로 접어 한 줄 전파 규칙을 얻는 유도, 실험 하이라이트, oversmoothing·transductive 한계, GNN 계보에서의 위치.</p>
+  </header>
+  <article>
+
+<div class="toc">
+  <div class="toc-title">목차</div>
+  <ol>
+    <li><a href="#s1">1. 문제 설정: 라벨이 거의 없는 그래프</a></li>
+    <li><a href="#s2">2. 스펙트럴 유도: 무거운 이론을 네 번 접는다</a></li>
+    <li><a href="#s3">3. 실험: 단순화가 오히려 이겼다</a></li>
+    <li><a href="#s4">4. 한계: 설계에 내장된 두 가지 제약</a></li>
+    <li><a href="#s5">5. GNN 계보에서의 자리</a></li>
+    <li><a href="#s6">6. 마무리: 단순함이 남긴 것</a></li>
+  </ol>
+</div>
+
+<p>GNN을 공부하다 보면 어느 논문을 읽든 baseline 표 맨 윗줄에 <strong>GCN</strong>이 있다. 2017년 ICLR 논문 하나가 8년째 그래프 학습의 원점 노릇을 하는 셈이다. 신기한 건, 이 논문의 핵심이 결국 <strong>딱 한 줄짜리 전파 규칙</strong>이라는 점이다.</p>
+
+$$H^{(l+1)} = \sigma\!\left( \tilde{D}^{-\frac{1}{2}} \tilde{A}\, \tilde{D}^{-\frac{1}{2}} H^{(l)} W^{(l)} \right)$$
+
+<p>이웃 특징을 정규화한 인접행렬로 섞고, 가중치를 곱하고, 활성화한다. 그게 전부다. 그런데 이 단순한 식이 어떻게 나왔는지 따라가 보면, 스펙트럴 그래프 이론이라는 꽤 무거운 배경을 <strong>네 번의 근사로 접어 내리는</strong> 과정이 숨어 있다. 이 글은 그 접는 과정을 노트처럼 정리한다 — 문제 설정부터 유도, 실험, 한계, 그리고 GNN 계보에서 GCN이 서 있는 자리까지.</p>
+
+<p>논문: Kipf &amp; Welling, <em>Semi-Supervised Classification with Graph Convolutional Networks</em>, ICLR 2017 (<a href="https://arxiv.org/abs/1609.02907">arXiv:1609.02907</a>) · 코드: <a href="https://github.com/tkipf/gcn">github.com/tkipf/gcn</a></p>
+
+<div class="stat-row">
+  <div class="stat">
+    <div class="stat-value">81.5% <span class="vs">vs</span> <span class="dim">75.7%</span></div>
+    <div class="stat-label">Cora 정확도 — GCN vs 최강 baseline Planetoid</div>
+    <div class="stat-context">Citeseer 70.3 vs 64.7, NELL 66.0 vs 61.9 — Citeseer/Cora/Pubmed/NELL 4개 벤치마크 전부에서 SOTA 갱신 (랜덤 가중치 초기화 100회 평균)</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">3.9<span class="dim">배</span></div>
+    <div class="stat-label">NELL 학습 속도 — Planetoid(185초) 대비 GCN(48초)</div>
+    <div class="stat-context">정확도도 61.9%→66.0%로 함께 상승, Cora는 13초→4초로 더 큰 속도 격차</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">2~3 <span class="dim">layer</span></div>
+    <div class="stat-label">권장 깊이 — 그 이상이면 학습이 어려워짐</div>
+    <div class="stat-context">저자 관찰: 7 layer를 넘으면 residual 없이는 학습이 어려움 — renormalized 연산자를 반복 적용할수록 oversmoothing이 원인으로 추정됨</div>
+  </div>
+</div>
+
+<h2 id="s1"><span class="no">1</span>문제 설정: 라벨이 거의 없는 그래프</h2>
+<p>풀려는 문제는 <strong>전이적 준지도 노드 분류(transductive semi-supervised node classification)</strong>다. 인용 네트워크에서 문서 하나가 노드, 인용 관계가 엣지고, 라벨은 극소수 노드에만 붙어 있다. 얼마나 적냐면 Cora는 클래스당 20개, NELL은 <strong>클래스당 1개</strong>뿐이다.</p>
+
+<p>이전 방식들은 이 부족한 라벨을 그래프 구조로 메우려고 손실 함수에 라플라시안 정규화 항을 붙였다.</p>
+
+$$\mathcal{L} = \mathcal{L}_0 + \lambda \mathcal{L}_{\text{reg}}$$
+
+<p>\(\mathcal{L}_{\text{reg}}\)는 "연결된 노드는 라벨이 비슷하다"(smoothness)를 <strong>명시적으로 강제</strong>하는 항이다. Kipf &amp; Welling은 여기에 이의를 제기한다 — 엣지가 항상 유사성만 뜻하지는 않고, 추가 정보를 담을 수도 있는데 이 가정이 모델 용량을 제약한다는 것이다.</p>
+
+<p>그래서 발상을 뒤집는다. <strong>정규화 항을 버리고</strong>, 대신 그래프 구조 \(A\)를 신경망 \(f(X, A)\) 안으로 직접 밀어 넣는다. 그러면 지도 손실의 그래디언트가 엣지를 타고 흘러, 라벨 없는 노드의 표현까지 함께 학습된다. 구조를 손실이 아니라 <strong>모델 자체에 주입</strong>하는 이 전환이 논문의 출발점이다.</p>
+
+<h2 id="s2"><span class="no">2</span>스펙트럴 유도: 무거운 이론을 네 번 접는다</h2>
+<p>여기가 논문의 이론적 심장이다. 최종 식이 어떻게 나오는지 단계별로 따라가 보자.</p>
+
+<p>시작점은 <strong>스펙트럴 그래프 합성곱(spectral graph convolution)</strong>이다. 대칭 정규화 라플라시안 \(L = I_N - D^{-1/2}AD^{-1/2} = U\Lambda U^\top\)의 고유벡터 \(U\)를 "그래프 푸리에 기저"로 삼아, 스펙트럼 도메인에서 필터를 정의한다.</p>
+
+$$g_\theta \star x = U g_\theta U^\top x$$
+
+<p>문제는 이게 비싸다는 것이다. \(U\)와의 곱이 \(O(N^2)\)이고, 애초에 고유분해 자체가 대규모 그래프엔 부담이다. 이걸 네 단계로 접어 내린다.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="620" height="150" viewBox="0 0 620 150" role="img" aria-label="스펙트럴 합성곱을 네 단계로 접는 과정: Chebyshev K차 절단, K=1 선형화, 단일 파라미터화, renormalization trick">
+      <defs>
+        <marker id="fold-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+      <g stroke="var(--muted)" stroke-width="1.6" marker-end="url(#fold-arr)">
+        <line x1="140" y1="75" x2="162" y2="75"/>
+        <line x1="292" y1="75" x2="314" y2="75"/>
+        <line x1="444" y1="75" x2="466" y2="75"/>
+      </g>
+      <rect x="8" y="40" width="132" height="70" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="74" y="68" font-size="12" fill="var(--ink)" text-anchor="middle">1. Chebyshev</text>
+      <text x="74" y="86" font-size="12" fill="var(--ink)" text-anchor="middle">K차 절단</text>
+      <rect x="162" y="40" width="130" height="70" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="227" y="68" font-size="12" fill="var(--ink)" text-anchor="middle">2. K=1</text>
+      <text x="227" y="86" font-size="12" fill="var(--ink)" text-anchor="middle">선형화</text>
+      <rect x="314" y="40" width="130" height="70" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="379" y="68" font-size="12" fill="var(--ink)" text-anchor="middle">3. 단일</text>
+      <text x="379" y="86" font-size="12" fill="var(--ink)" text-anchor="middle">파라미터화</text>
+      <rect x="466" y="40" width="146" height="70" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="539" y="68" font-size="12" fill="var(--ink)" text-anchor="middle">4. Renormalization</text>
+      <text x="539" y="86" font-size="12" fill="var(--ink)" text-anchor="middle">trick</text>
+    </svg>
+  </div>
+  <figcaption>스펙트럴 합성곱을 접는 네 단계 — 마지막 renormalization trick(강조)이 최종 전파 규칙이 된다</figcaption>
+</figure>
+
+<p><strong>1단계 — Chebyshev \(K\)차 절단.</strong> 필터를 라플라시안의 \(K\)차 Chebyshev 다항식으로 근사한다.</p>
+
+$$g_{\theta'} \star x \approx \sum_{k=0}^{K} \theta'_k T_k(\tilde{L})\, x$$
+
+<p>핵심은 \((U\Lambda U^\top)^k = U\Lambda^k U^\top\)이라는 성질이다. 덕분에 필터를 라플라시안의 다항식으로 직접 쓸 수 있고 \(U\)가 소거된다. 결과적으로 필터는 중심 노드에서 최대 \(K\) 스텝 이내 이웃에만 의존하는 <strong>\(K\)-localized</strong> 연산이 되고, 복잡도는 \(O(|\mathcal{E}|)\)로 떨어진다. 여기까지가 사실 ChebNet이다.</p>
+
+<p><strong>2단계 — \(K{=}1\) 선형화.</strong> GCN은 여기서 한 발 더 나간다. \(K\)를 1로 두고 \(\lambda_{\max} \approx 2\)로 근사하면 \(\tilde{L} = L - I_N\)이 되고, \(L - I_N = -D^{-1/2}AD^{-1/2}\)를 대입해 정리하면</p>
+
+$$g_{\theta'} \star x \approx \theta'_0 x - \theta'_1 D^{-1/2}AD^{-1/2} x$$
+
+<p>층 하나의 표현력은 줄지만, 그건 <strong>층을 여러 개 쌓아 회복</strong>한다는 게 논문의 논리다.</p>
+
+<p><strong>3단계 — 단일 파라미터화.</strong> 파라미터를 \(\theta = \theta'_0 = -\theta'_1\)로 묶으면 층당 파라미터가 하나로 준다.</p>
+
+$$g_\theta \star x \approx \theta \left( I_N + D^{-1/2}AD^{-1/2} \right) x$$
+
+<p>그런데 여기 함정이 있다. 이 연산자 \(I_N + D^{-1/2}AD^{-1/2}\)의 고유값 범위가 \([0, 2]\)라, 깊게 반복하면 <strong>그래디언트가 폭발하거나 소실</strong>된다.</p>
+
+<p><strong>4단계 — renormalization trick.</strong> 이 문제를 해결하는 게 논문의 유명한 한 수다. self-loop를 인접행렬 안에 넣고(\(\tilde{A} = A + I_N\)), 그 결합 차수로 다시 정규화한다.</p>
+
+$$I_N + D^{-1/2}AD^{-1/2} \;\longrightarrow\; \tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}$$
+
+<p>이렇게 연산자 고유값을 안정 범위로 되돌린다. 다채널로 일반화해 \(\sigma\)를 씌우고 층을 쌓으면, 맨 앞에서 본 그 한 줄 규칙이 정확히 나온다. 복잡도는 sparse-dense 행렬곱 덕분에 \(O(|\mathcal{E}|FC)\), 엣지 수에 선형이다.</p>
+
+<p>실제 분류 모델은 이 층을 두 번 쌓은 <strong>2-layer GCN</strong>이다. 전처리로 \(\hat{A} = \tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}\)를 한 번 계산해 두고,</p>
+
+$$Z = f(X, A) = \text{softmax}\!\left( \hat{A}\; \text{ReLU}\!\left( \hat{A} X W^{(0)} \right) W^{(1)} \right)$$
+
+<p>라벨 노드 집합 \(\mathcal{Y}_L\)에 대한 교차 엔트로피로 학습한다. \(\hat{A}\)가 그래디언트를 라벨 노드에서 비라벨 노드로 흘려보내는 채널 역할을 한다.</p>
+
+<h2 id="s3"><span class="no">3</span>실험: 단순화가 오히려 이겼다</h2>
+<p>논문은 인용 네트워크 3종(Citeseer/Cora/Pubmed)과 지식그래프 NELL, 총 4개에서 실험한다. 결과는 깔끔하다 — <strong>4개 전부 SOTA를 갱신</strong>했고, 그러면서 더 빨랐다.</p>
+
+<p>정확도(%), 괄호는 수렴까지 wall-clock 학습시간(초). GCN은 랜덤 가중치 초기화 100회 평균이다.</p>
+
+<div class="tbl-wrap">
+<table>
+  <tr><th>Method</th><th>Citeseer</th><th>Cora</th><th>Pubmed</th><th>NELL</th></tr>
+  <tr><td>Planetoid*</td><td>64.7 (26s)</td><td>75.7 (13s)</td><td>77.2 (25s)</td><td>61.9 (185s)</td></tr>
+  <tr class="hl-row"><td>GCN (this paper)</td><td class="hl">70.3 (7s)</td><td class="hl">81.5 (4s)</td><td class="hl">79.0 (38s)</td><td class="hl">66.0 (48s)</td></tr>
+  <tr><td>GCN (rand. splits)</td><td>67.9 ± 0.5</td><td>80.1 ± 0.5</td><td>78.9 ± 0.7</td><td>58.4 ± 1.7</td></tr>
+</table>
+</div>
+
+<p>가장 강력한 baseline인 Planetoid 대비 Cora에서 <strong>+5.8%p</strong>(81.5 vs 75.7), NELL에서는 +4.1%p이면서 학습시간이 48초 대 185초로 <strong>약 3.9배 빠르다</strong>.</p>
+
+<p>그런데 개인적으로 더 흥미로운 건 절제 실험(Table 3)이다. 앞서 유도한 네 단계 중 어느 형태가 실제로 좋은지 직접 비교한 표다.</p>
+
+<div class="tbl-wrap">
+<table>
+  <tr><th>Description</th><th>Citeseer</th><th>Cora</th><th>Pubmed</th></tr>
+  <tr><td>Chebyshev filter, K=3</td><td>69.8</td><td>79.5</td><td>74.4</td></tr>
+  <tr><td>Chebyshev filter, K=2</td><td>69.6</td><td>81.2</td><td>73.8</td></tr>
+  <tr><td>1st-order model (식 6)</td><td>68.3</td><td>80.0</td><td>77.5</td></tr>
+  <tr><td>Single parameter (식 7)</td><td>69.3</td><td>79.2</td><td>77.4</td></tr>
+  <tr class="hl-row"><td>Renormalization trick (식 8)</td><td class="hl">70.3</td><td class="hl">81.5</td><td class="hl">79.0</td></tr>
+  <tr><td>MLP (\(X\Theta\))</td><td>46.5</td><td>55.1</td><td>71.4</td></tr>
+</table>
+</div>
+
+<p><strong>가장 단순한 최종 형태(renormalization)가 3개 전부 최고</strong>다. 파라미터도 연산도 더 적은데 정확도가 가장 높다. 특히 Pubmed에서 고차 Chebyshev(K=3)의 74.4보다 <strong>+4.6%p</strong> 앞선다 — 대규모 네트워크에서는 단순화가 오히려 유리하다는 뜻이다. 반대로 그래프 구조를 아예 안 쓰는 MLP는 Cora에서 55.1로 급락한다(GCN 대비 -26.4%p). 구조 전파가 성능의 핵심임을 보여주는 대조군이다.</p>
+
+<h2 id="s4"><span class="no">4</span>한계: 설계에 내장된 두 가지 제약</h2>
+<p>논문을 baseline으로 쓰기 전에 짚어야 할 약점이 몇 개 있다. 대부분은 <strong>설계에 처음부터 박혀 있는</strong> 것들이다.</p>
+
+<div class="note warn"><strong>깊게 못 쌓는다 (oversmoothing)</strong> — 저자들은 깊이 실험에서 "2~3 layer가 최적, 7 layer를 넘으면 residual 없이는 학습이 어렵다"고 관찰하지만, 원인을 context size 증가·overfitting 정도로만 귀속한다. 사실 이건 renormalized 연산자 \(\hat{A}\)를 반복 적용할수록 노드 표현이 정상분포로 수렴해 서로 구별되지 않게 되는 <strong>oversmoothing</strong> 현상으로 보인다(추정: 후속 Li et al. 2018, Oono &amp; Suzuki 2020에서 정식화). 이 논문은 그 현상을 명명하지도, 얕은 구조가 본질적 제약임을 인정하지도 않는다.</div>
+
+<div class="note warn"><strong>미관측 노드로 일반화가 안 된다 (transductive 전용)</strong> — 학습 시 전체 \(\hat{A}\)를 알아야 하고, 새 노드나 새 그래프로 넘어가는 경로가 없다. 흥미롭게도 경쟁 상대인 Planetoid에는 inductive 변형이 있는데, <strong>GCN의 이 한계는 원문 §7.2 한계 목록에서 아예 누락</strong>돼 있다.</div>
+
+<p>이 둘 말고도 노트할 만한 지점들이 있다. 굵게 강조된 성능 수치는 고정 split 기준이고 <strong>random split에서는 떨어진다</strong>(NELL 66.0 → 58.4±1.7, 7.6%p 하락). Table 3 변형 간 차이는 대체로 1~2%p인데 표준편차·유의성 검정이 없어 "better performance" 주장의 통계적 근거가 얇다. 또 하이퍼파라미터 튜닝에 <strong>검증 라벨 500개</strong>를 쓰는데, 이건 학습 라벨(클래스당 20개)보다 훨씬 많아 "저라벨" 주장과 다소 긴장 관계다.</p>
+
+<h2 id="s5"><span class="no">5</span>GNN 계보에서의 자리</h2>
+<p>GCN을 제대로 이해하려면 앞뒤 논문과 함께 봐야 한다. GCN은 계보의 <strong>분기점(hub)</strong>에 있다.</p>
+<ul>
+  <li><strong>조상 (spectral 계열)</strong> — Spectral CNN(Bruna 2014, 비국소·\(O(N^2)\)) → ChebNet(Defferrard 2016, Chebyshev \(K\)차로 국소화·\(O(|\mathcal{E}|)\)) → <strong>GCN</strong>(\(K{=}1\) + renormalization). 스펙트럴 필터를 점점 국소화·선형화하는 단순화의 연속이고, GCN이 그 종착점이다.</li>
+  <li><strong>자식 (이웃 집계 관점의 일반화)</strong> — GAT(Veličković 2018)는 GCN이 degree로 <strong>고정</strong>한 이웃 가중치를 attention으로 <strong>학습</strong>해 같은 벤치마크에서 상회한다(Cora 83.0 vs 81.5, Citeseer 72.5 vs 70.3, Pubmed는 79.0 동일). GraphSAGE(Hamilton 2017)는 sampling + aggregation으로 <strong>inductive</strong> 설정을 열어 GCN의 transductive 한계를 정면으로 다룬다.</li>
+</ul>
+
+<p>한 가지 주의할 점. GAT·Planetoid는 GCN과 동일한 Yang et al. 분할을 써서 <strong>직접 비교가 되지만</strong>, ChebNet(MNIST/20NEWS)과 GraphSAGE(micro-F1, Reddit/PPI, inductive)는 데이터셋·메트릭이 달라 표의 숫자를 나란히 놓고 비교하면 안 된다. 논문 읽을 때 자주 헷갈리는 부분이다.</p>
+
+<div class="tbl-wrap">
+<table>
+  <tr><th>논문</th><th>연도</th><th>핵심 차이</th><th>Cora</th><th>GCN과 비교</th></tr>
+  <tr><td>ChebNet</td><td>2016</td><td>Chebyshev K차 (K&gt;1)</td><td>— (MNIST 99.14)</td><td>벤치마크 달라 불가</td></tr>
+  <tr class="hl-row"><td>GCN</td><td>2017</td><td>K=1 + renormalization</td><td class="hl">81.5</td><td>기준</td></tr>
+  <tr><td>GraphSAGE</td><td>2017</td><td>sampling+aggregation, inductive</td><td>— (micro-F1)</td><td>메트릭 달라 불가</td></tr>
+  <tr><td>GAT</td><td>2018</td><td>attention으로 이웃 가중치 학습</td><td>83.0±0.7</td><td>직접 비교 가능</td></tr>
+</table>
+</div>
+
+<p>참고로 이 5편 중 <strong>edge feature·방향 그래프</strong>를 정면으로 푼 건 없고, mini-batch 확장성의 근본 해법도 이 세트 밖(FastGCN, Cluster-GCN 등)에 있다. GCN이 남긴 빈칸인 셈이다.</p>
+
+<h2 id="s6"><span class="no">6</span>마무리: 단순함이 남긴 것</h2>
+<p>GCN을 다시 읽으며 가장 인상 깊었던 건, 무거운 스펙트럴 이론에서 출발해 <strong>의도적으로 표현력을 깎아내리는</strong> 방향으로 유도를 밀어붙였다는 점이다. \(K{=}1\)로 자르고, 파라미터를 하나로 묶고, self-loop를 넣어 고유값을 조인다. 그 결과가 이론적으로도 우아하고 실측으로도 가장 빠르고 정확했다.</p>
+
+<p>물론 그 단순함의 대가로 얕은 구조(oversmoothing)와 transductive 제약이 설계에 내장됐고, 이후 GNN 연구의 상당 부분이 바로 이 두 빈칸을 메우는 작업이었다. residual·PairNorm이 oversmoothing을, GraphSAGE가 inductive를, GAT가 고정 가중치를 각각 겨냥한다.</p>
+
+<p>그래서 노트에 하나만 남긴다면 이거다 — <strong>GCN은 답이라기보다 좌표다.</strong> message passing이라는 좌표계의 원점을 찍어 두었고, 이후 논문들은 그 원점으로부터 얼마나, 어느 방향으로 움직였는지로 자신을 설명한다. 그러니 GNN을 공부한다면 다른 걸 읽기 전에 이 한 줄 규칙이 어디서 왔는지부터 손으로 따라가 보는 게 남는 장사다.</p>
+
+<details>
+  <summary>출처</summary>
+  <ul>
+    <li>기준 논문: <a href="https://arxiv.org/abs/1609.02907">arXiv:1609.02907</a> · 코드 <a href="https://github.com/tkipf/gcn">github.com/tkipf/gcn</a></li>
+    <li>ChebNet <a href="https://arxiv.org/abs/1606.09375">arXiv:1606.09375</a> · Planetoid <a href="https://arxiv.org/abs/1603.08861">arXiv:1603.08861</a> · GraphSAGE <a href="https://arxiv.org/abs/1706.02216">arXiv:1706.02216</a> · GAT <a href="https://arxiv.org/abs/1710.10903">arXiv:1710.10903</a> · Spectral CNN <a href="https://arxiv.org/abs/1312.6203">arXiv:1312.6203</a></li>
+  </ul>
+</details>
+
+<div class="post-nav">
+  <div class="prev">
+    <span class="dir">← 이전 글</span>
+    <a href="mitre-attack-common-language.html">MITRE ATT&amp;CK 제대로 읽기 — 공격자를 말하는 공통 언어</a>
+  </div>
+</div>
+
+  </article>
+</main>
+<footer class="site-footer">
+  <span>© songhyun9999</span>
+  <a href="../archive.html">← 전체 글</a>
+</footer>
+</body>
+</html>
