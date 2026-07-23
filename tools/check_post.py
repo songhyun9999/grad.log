@@ -5,7 +5,7 @@
 검사 항목 (README 발행 규약의 기계 검사 가능한 부분):
   1) posts/<slug>.html 존재 + 미치환 플레이스홀더({{) 없음
   2) KaTeX 일관성 — 본문에 수식 있으면 head에 KaTeX, 없으면 KaTeX 삭제
-  3) 목록 4곳(index/archive/feed/sitemap)에 slug 반영
+  3) 목록 반영 — archive/feed/sitemap 필수, index는 최근 5개 밖이면 archive 등재로 갈음
   4) index.html 최근 글 5개 이하
   5) feed.xml 해당 item의 pubDate가 RFC822
   6) 읽기 시간 — 한글자수/500 + 영단어수/200 (분, 반올림, 최소 1) ↔ meta '약 N분' 일치
@@ -84,9 +84,12 @@ def main():
           "" if has_math == has_katex else
           ("수식 있는데 head에 KaTeX 없음" if has_math else "수식 없는데 KaTeX 3줄 잔존 — 삭제"))
 
-    # 3) 목록 4곳 반영
-    for rel in ("index.html", "archive.html", "feed.xml", "sitemap.xml"):
+    # 3) 목록 반영 — archive/feed/sitemap은 전 글 필수, index는 최근 5개만 유지하므로 archive 등재로 갈음
+    for rel in ("archive.html", "feed.xml", "sitemap.xml"):
         check(slug in read(rel), f"{rel}에 반영", "" if slug in read(rel) else f"'{slug}' 링크 없음")
+    in_index = slug in read("index.html")
+    check(in_index or slug in read("archive.html"), "index.html 또는 archive에 반영",
+          "" if in_index else "(index 최근 5개 밖 — archive 등재로 충족)")
 
     # 4) index 최근 글 5개 이하
     recent = between(read("index.html"), "posts:start", "posts:end")
@@ -150,7 +153,7 @@ def main():
     # 9b) 인라인 style은 overflow 스크롤 래퍼만 허용
     allowed_decls = {"overflow-x:auto", "max-width:100%"}
     bad_styles = []
-    for sty in re.findall(r'style="([^"]*)"', article):
+    for sty in re.findall(r'(?<![-\w])style="([^"]*)"', article):
         decls = {d.strip().replace(" ", "") for d in sty.split(";") if d.strip()}
         if not decls <= allowed_decls:
             bad_styles.append(sty)

@@ -78,7 +78,11 @@ tools/check_post.py   발행 전 계약 검증기 (아래 규약 5)
 **그림 규약** (인라인 SVG, 색은 CSS 변수만 — `var(--accent)`/`var(--muted)`/`var(--line)`/`var(--surface)`):
 - **플로우 다이어그램** — 파이프라인·아키텍처 단계 설명용. 가로 박스(rx=8, fill=var(--surface),
   stroke=var(--line)) + 화살표(stroke=var(--muted), marker). 강조 단계만 stroke=var(--accent).
-  라벨은 SVG `<text>`(fill=var(--ink), font-style 지정해 이탤릭 방지). `.fig-row`로 감싸고 `<figcaption>` 필수.
+  라벨은 SVG `<text>`(fill=var(--ink)). 이탤릭 방지는 `assets/style.css`의 전역 `svg text { font-style: normal; }`이
+  처리하므로 개별 font-style 속성은 넣지 않는다. `.fig-row`로 감싸고 `<figcaption>` 필수.
+- **accent 도형 위 텍스트** — fill=var(--accent) 도형 위에 얹는 `<text>`는 `fill="var(--bg)"`(배경색 반전 대비)만 사용.
+- **큰 그림·넓은 수식 스크롤** — 뷰포트보다 넓어질 수 있는 SVG·display 수식·표 외 블록은
+  `<div style="overflow-x:auto">` 래퍼로 감싼다(인라인 style은 이 스크롤 래퍼만 허용 — 검증기 9b).
 - **개념 그림** — 도메인 구조(그래프·시스템 관계) 설명용. 노드 원/사각 + 엣지 선, 스타일은 위와 동일.
 - **수치 차트 주의** — 자릿수가 다른 극단 격차는 차트가 아니라 히어로 스탯으로(로그축 막대 금지).
   다계열 색상 구분 차트 금지(단일 강조색 + 무채색 대비만), 모든 마크에 직접 라벨(색만으로 정보 전달 금지).
