@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GNN 공부 총정리 — 한 식에서 밑바닥 실습까지 · grad.log</title>
+  <meta name="description" content="GNN 공부 산출물 4종(기초 Q&amp;A 8문답, Wu 2021 서베이 digest, GCN 원논문 digest, 순정 PyTorch 밑바닥 실습)을 메시지 패싱 한 식에서 갈라지는 하나의 사슬로 꿴 총정리.">
+  <meta property="og:title" content="GNN 공부 총정리 — 한 식에서 밑바닥 실습까지">
+  <meta property="og:description" content="GNN 공부 산출물 4종(기초 Q&amp;A 8문답, Wu 2021 서베이 digest, GCN 원논문 digest, 순정 PyTorch 밑바닥 실습)을 메시지 패싱 한 식에서 갈라지는 하나의 사슬로 꿴 총정리.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://songhyun9999.github.io/grad.log/posts/gnn-study-roundup.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});"></script>
+</head>
+<body>
+<header class="site-header">
+  <a class="site-name" href="../index.html">grad.log</a>
+  <nav class="site-nav">
+    <a href="../index.html">Home</a>
+    <a href="../archive.html">Archive</a>
+    <a href="../about.html">About</a>
+  </nav>
+</header>
+<main>
+  <header class="post-header">
+    <div class="eyebrow">총정리 노트 · GNN</div>
+    <h1>GNN 공부 총정리 — 한 식에서 밑바닥 실습까지</h1>
+    <div class="meta">
+      <time datetime="2026-07-23">2026-07-23</time>
+      <span>약 9분</span>
+      <span class="tag">GNN</span><span class="tag">GCN</span><span class="tag">message-passing</span><span class="tag">PIDS</span><span class="tag">공부-정리</span>
+    </div>
+    <p class="lede">GNN 공부 산출물 4종(기초 Q&amp;A 8문답, Wu 2021 서베이 digest, GCN 원논문 digest, 순정 PyTorch 밑바닥 실습)을 메시지 패싱 한 식에서 갈라지는 하나의 사슬로 꿴 총정리.</p>
+  </header>
+  <article>
+
+<div class="toc">
+  <div class="toc-title">목차</div>
+  <ol>
+    <li><a href="#s1">1. 왜 GNN이었나 — provenance 그래프라는 동기</a></li>
+    <li><a href="#s2">2. 메시지 패싱 한 식 — running example로 손계산</a></li>
+    <li><a href="#s3">3. 4모델은 한 식의 빈칸 채우기</a></li>
+    <li><a href="#s4">4. 그래프의 실체 — 구조·특징·메시지의 정체</a></li>
+    <li><a href="#s5">5. 학습 패러다임 — 교과서와 현장이 갈리는 곳</a></li>
+    <li><a href="#s6">6. 밑바닥 실습으로 굳히기 — PyG 없이 순정 PyTorch</a></li>
+    <li><a href="#s7">7. 남은 것 — 사슬은 아직 안 끝났다</a></li>
+  </ol>
+</div>
+
+<p>미래의 나에게. GNN 공부는 어느 순간부터 논문·노트·코드가 사방으로 흩어져서, "내가 뭘 알고 뭘 모르는지"가 헷갈리기 시작했다. 그래서 지금까지의 산출물 — 기초 Q&amp;A 8문답, 서베이 digest, GCN 원논문 digest, 밑바닥 실습 — 을 <strong>하나의 사슬</strong>로 꿰어 둔다. 놀랍게도 그 사슬은 딱 <strong>한 줄의 식</strong>에서 출발한다.</p>
+
+$$h_v^{(k)} = \text{UPDATE}\!\left(h_v^{(k-1)},\ \text{AGGREGATE}\!\left(\{h_u^{(k-1)} : u \in N(v)\}\right)\right)$$
+
+<p>이 글은 그 식이 어떻게 GCN·GraphSAGE·GAT·GIN 네 모델로, 학습 패러다임으로, 그리고 내가 실제로 풀던 PIDS(침입 탐지) 연구로 뻗어 가는지를 복기한다. 세부는 이미 써 둔 세 편(<a href="gnn-basics.html">GNN 기초</a>, <a href="gcn-spectral-graph-convolution.html">GCN 스펙트럴 유도</a>, <a href="gcn-eq1-qa-note.html">식(1)→GCN Q&amp;A</a>)으로 링크한다 — 여기선 <strong>사슬을 잇는 뼈대</strong>만.</p>
+
+<div class="stat-row">
+  <div class="stat">
+    <div class="stat-value">2.3333</div>
+    <div class="stat-label">running example \(v_3\)의 mean 집계 결과</div>
+    <div class="stat-context">이웃 \(v_1{=}1, v_2{=}2, v_4{=}4\)의 평균 — 메시지 패싱 한 식을 손으로 처음 굴려 본 값</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">0.354 <span class="vs">vs</span> <span class="dim">0.289</span></div>
+    <div class="stat-label">GCN 정규화 가중치 — \(v_3 \leftarrow v_4\) 대 \(v_3 \leftarrow v_1\)</div>
+    <div class="stat-context">차수 작은 \(v_4\)(2)가 더 크게, 허브 \(v_3\)(4) 쪽은 눌린다 — 자기루프 가중치는 0.25</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">0.796 <span class="vs">vs</span> <span class="dim">81.5%</span></div>
+    <div class="stat-label">실습 04번 test 정확도(random split) 대 원논문(Planetoid split)</div>
+    <div class="stat-context">split이 다르니 당연한 격차지만, 그 자체가 GCN 논문의 재현성 이슈를 몸으로 보여준다</div>
+  </div>
+</div>
+
+<h2 id="s1"><span class="no">1</span>왜 GNN이었나 — provenance 그래프라는 동기</h2>
+<p>시작은 순수한 호기심이 아니라 문제였다. <strong>PIDS(Provenance-based Intrusion Detection)</strong> — 시스템 로그를 프로세스·파일·소켓이 노드이고 시스템콜이 엣지인 거대한 방향 그래프(provenance graph)로 보고, 그 위에서 공격을 찾는 일. 여기서 CNN도 RNN도 안 맞는다.</p>
+
+<ul>
+  <li><strong>CNN</strong>은 격자(이웃 수 고정)를, <strong>RNN</strong>은 시퀀스(순서 존재)를 전제한다.</li>
+  <li>그런데 그래프는 이웃 수가 제각각이고 순서가 없다.</li>
+</ul>
+
+<p>이 두 가지 어긋남이 GNN을 요구한다. 가변 이웃 수는 <strong>집계 함수</strong>로, 순서 없음은 <strong>순열 불변</strong>(sum/mean/max)으로 흡수한다. 위의 한 식이 바로 그 두 요구를 담은 그릇이다.</p>
+
+<p>provenance 그래프는 벤치마크(Cora류)보다 까다로운 조합을 가진다 — <strong>방향 + 엣지 특징 + 노드가 계속 생성됨(inductive 필수)</strong>. 이 세 조건이 나중에 "왜 기본 4모델로는 부족한가"를 결정한다. 미리 못을 박아 두자.</p>
+
+<figure>
+  <div class="fig-row">
+    <svg width="640" height="240" viewBox="0 0 640 240" role="img" aria-label="왼쪽은 무방향·노드 고정·특징만 있는 정적 벤치마크 그래프, 오른쪽은 방향 화살표와 시스템콜 라벨(fork·read)이 붙은 엣지, 시간축으로 노드가 계속 추가되는 provenance 그래프 — 방향·엣지특징·inductive 세 배지가 붙어 있다">
+      <defs>
+        <marker id="roundup-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+
+      <text x="140" y="22" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle">정적 벤치마크 그래프</text>
+      <text x="140" y="40" font-size="11" fill="var(--muted)" text-anchor="middle">무방향 · 노드 고정 · 특징만</text>
+      <g stroke="var(--line)" stroke-width="1.6">
+        <line x1="70" y1="100" x2="220" y2="80"/>
+        <line x1="70" y1="100" x2="120" y2="190"/>
+        <line x1="220" y1="80" x2="220" y2="160"/>
+        <line x1="220" y1="160" x2="120" y2="190"/>
+        <line x1="220" y1="80" x2="120" y2="190"/>
+      </g>
+      <g fill="var(--surface)" stroke="var(--line)" stroke-width="1.6">
+        <circle cx="70" cy="100" r="13"/>
+        <circle cx="220" cy="80" r="13"/>
+        <circle cx="220" cy="160" r="13"/>
+        <circle cx="120" cy="190" r="13"/>
+      </g>
+
+      <line x1="300" y1="10" x2="300" y2="230" stroke="var(--line)" stroke-width="1"/>
+
+      <text x="480" y="22" font-size="13" font-weight="600" fill="var(--ink)" text-anchor="middle">provenance 그래프</text>
+      <g font-size="10.5" fill="var(--accent)">
+        <rect x="365" y="32" width="58" height="18" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"/>
+        <text x="394" y="45" text-anchor="middle">방향</text>
+        <rect x="431" y="32" width="76" height="18" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"/>
+        <text x="469" y="45" text-anchor="middle">엣지특징</text>
+        <rect x="515" y="32" width="76" height="18" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"/>
+        <text x="553" y="45" text-anchor="middle">inductive</text>
+      </g>
+
+      <g stroke="var(--muted)" stroke-width="1.6" marker-end="url(#roundup-arr)">
+        <line x1="413" y1="100" x2="497" y2="100"/>
+        <line x1="533" y1="112" x2="565" y2="142"/>
+      </g>
+      <text x="455" y="92" font-size="10.5" fill="var(--ink)" text-anchor="middle">fork</text>
+      <text x="562" y="122" font-size="10.5" fill="var(--ink)" text-anchor="middle">read</text>
+
+      <circle cx="400" cy="100" r="13" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <circle cx="520" cy="100" r="13" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+      <rect x="558" y="145" width="42" height="26" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1.6"/>
+
+      <circle cx="470" cy="190" r="11" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3"/>
+      <text x="470" y="194" font-size="12" fill="var(--muted)" text-anchor="middle">+</text>
+      <line x1="530" y1="115" x2="480" y2="182" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <text x="470" y="215" font-size="10.5" fill="var(--muted)" text-anchor="middle">시간축으로 노드 계속 추가</text>
+    </svg>
+  </div>
+  <figcaption>왼쪽은 무방향·노드 고정·특징만 있는 정적 벤치마크 그래프, 오른쪽은 방향 엣지에 시스템콜 라벨(fork·read)이 붙고 시간축으로 노드가 계속 추가되는 provenance 그래프 — 방향·엣지특징·inductive 세 조건이 배지로 표시돼 있다</figcaption>
+</figure>
+
+<h2 id="s2"><span class="no">2</span>메시지 패싱 한 식 — running example로 손계산</h2>
+<p>추상적인 UPDATE/AGGREGATE를 손으로 만져 보려고 작은 예제를 하나 고정해 뒀다. 노드 \(v_1\sim v_4\), 엣지 \((v_1,v_2),(v_1,v_3),(v_2,v_3),(v_3,v_4)\), 주인공은 이웃 3개를 가진 \(v_3\). 초기 특징은 \(x_1=1, x_2=2, x_3=3, x_4=4\).</p>
+
+<p>\(v_3\)의 이웃은 \(\{v_1, v_2, v_4\}\)이므로 mean 집계는</p>
+
+$$\frac{1+2+4}{3} = 2.3333$$
+
+<p>한 번의 손계산이 식 전체를 붙잡아 준다. 여기서 두 가지가 자연히 딸려 나온다.</p>
+
+<ul>
+  <li><strong>K-hop 수용 영역</strong> — 정보는 릴레이로 전파된다. 레이어 2에서 \(v_4\)는 직접 만난 적 없는 \(v_1\)·\(v_2\)의 정보를 \(v_3\)을 경유해 받는다. 층을 쌓는다는 건 더 먼 이웃까지 본다는 뜻.</li>
+  <li><strong>이웃 폭발</strong> — 그 대가로 수용 영역이 평균차수의 \(K\)제곱으로 지수 증가한다. 내가 realtime 글에서 봤던 "2-hop 라벨 팽창 25배"가 정확히 같은 수학이다.</li>
+</ul>
+
+<p>기초를 더 파고든 건 <a href="gnn-basics.html">GNN 기초 상세 글</a>에 있다.</p>
+
+<h2 id="s3"><span class="no">3</span>4모델은 한 식의 빈칸 채우기</h2>
+<p>이게 공부하면서 가장 후련했던 깨달음이다. GCN·GraphSAGE·GAT·GIN은 서로 다른 발명이 아니라, <strong>같은 식의 빈칸을 서로 다르게 채운 답</strong>이다. 각 모델은 하나의 질문에 대한 대답으로 태어났다.</p>
+
+<div class="tbl-wrap">
+<table>
+  <tr><th>질문</th><th>답</th><th>모델</th></tr>
+  <tr><td>이웃 많은 노드가 독식하지 않게?</td><td>차수로 누른다</td><td>GCN</td></tr>
+  <tr><td>이웃이 수천 개면?</td><td>샘플링 + inductive</td><td>GraphSAGE</td></tr>
+  <tr><td>이웃이 다 똑같이 중요한가?</td><td>중요도 \(\alpha\)를 학습</td><td>GAT</td></tr>
+  <tr><td>구조 구별력의 이론 한계는?</td><td>sum 집계 + WL 테스트 수준</td><td>GIN</td></tr>
+</table>
+</div>
+
+<p>메시지 식으로 쓰면 차이가 한눈에 보인다. 같은 \(\sum_{u\in N(v)}\) 안에서 \(m\)의 정의만 바뀐다.</p>
+
+<ul>
+  <li><strong>GCN</strong>: \(m = \frac{1}{\sqrt{\tilde{d}_u \tilde{d}_v}} W h_u\) (차수로 감쇠, 집계 sum)</li>
+  <li><strong>GraphSAGE</strong>: \(m = h_u\) (항등), 갱신에서 \(h_v^{(k)} = \sigma(W[h_v \,\|\, \text{AGG}])\)</li>
+  <li><strong>GAT</strong>: \(m = \alpha_{vu} W h_u\) (어텐션 가중)</li>
+  <li><strong>GIN</strong>: \(m = h_u\), 갱신 \(h_v^{(k)} = \text{MLP}((1+\epsilon)h_v + \sum m)\)</li>
+</ul>
+
+<p>두 개는 손으로 확인해 뒀다. <strong>GCN의 차수 감쇠</strong>는 running example에서 자기루프 포함 차수 \(v_3=4, v_4=2, v_1=3\)일 때 \(v_3 \leftarrow v_4\) 가중치가 \(1/\sqrt{4\cdot2}\approx 0.354\), \(v_3\leftarrow v_1\approx 0.289\), 자기루프 \(0.25\). 의미는 명확하다 — <code>libc.so</code> 같은 허브 노드가 임베딩을 지배하지 못하게 누른다.</p>
+
+<p><strong>GIN의 sum</strong>은 mean이 못 하는 걸 한다. 이웃 \(\{2,2,2\}\)와 \(\{2\}\)를 mean은 둘 다 \(2\)로 뭉개지만(구별 불가), sum은 \(6\)과 \(2\)로 가른다. mean은 <strong>이웃 개수 정보를 지워 버린다</strong>. GIN이 표현력에서 WL 테스트 수준까지 올라가는 근원이 이거다.</p>
+
+<p>왜 <strong>GraphSAGE의 inductive</strong>가 provenance에서 협상 불가인가도 여기서 풀린다. GCN 원형은 transductive라 새 노드가 오면 재학습해야 하는데, SAGE는 "샘플→집계→concat" 하는 <strong>함수 자체를 학습</strong>해서 새 노드에 즉시 적용된다. ThreaTrace·FLASH가 SAGE를 백본으로 채택한 이유. provenance는 노드가 끝없이 생기니까.</p>
+
+<p>한계도 잊지 말 것. <strong>over-smoothing</strong> — 층을 너무 쌓으면 수용 영역이 그래프 전체로 수렴해 모든 임베딩이 한 점으로 붕괴한다. 그래서 실무는 2~4층 관행. 이 지도 전체의 표준 출처는 Wu et al.(2021) 서베이의 <strong>4범주 taxonomy(RecGNN·ConvGNN·GAE·STGNN)</strong>이고, 지금까지 얘기한 4모델은 전부 그 중 ConvGNN 안에 산다.</p>
+
+<h2 id="s4"><span class="no">4</span>그래프의 실체 — 구조·특징·메시지의 정체</h2>
+<p>한동안 헷갈렸던 지점을 정리해 둔다. "노드 특징이 계산에 안 들어가는 것 같은데?" — <strong>정반대다.</strong> 노드 특징이 계산 대상 그 자체다. \(h_v^{(0)} = x_v\)이고, 메시지의 정체가 곧 (변환된) 이웃 특징 벡터니까.</p>
+
+<p>역할 분담을 배선도 비유로 굳혔다.</p>
+
+<ul>
+  <li><strong>구조</strong> = 정보가 <em>어디로</em> 흐를지 (배선도)</li>
+  <li><strong>특징</strong> = <em>무엇이</em> 흐를지 (전류)</li>
+</ul>
+
+<p>GCN 식 \(H^{(k)}=\sigma(\hat{A}H^{(k-1)}W)\)에서 \(\hat A\)와 곱해지는 \(H\)가 바로 \(X\) 출신 행렬이다. 그래서 특징이 없는 그래프조차 가짜 특징(상수 1, 차수, 원-핫)을 만들어 넣어야 돈다. 상수 1만 넣으면 구조적으로 대칭인 \(v_1\)·\(v_2\)는 영원히 같은 임베딩이 나와 구별 불가. GIN 논문이 실제로 차수 특징을 쓴 이유다.</p>
+
+<p>보안 함의가 결정적이다. 구조가 똑같은 서브그래프 — <code>bash</code>가 fork→read 하는 것과 <code>powershell</code>이 fork→read 하는 것 — 를 가르는 건 <strong>특징뿐</strong>이다. MAGIC의 "수동 엔티티에 약함" 한계도 정확히 이 지점.</p>
+
+<p>그리고 <strong>메시지</strong>. 메시지는 엣지 하나를 타고 전달되는 벡터 하나다. 숫자로 보면 선명하다. \(M(h_u, e)=h_u\times(1+e)\)이고 fork=1, read=0일 때,</p>
+
+$$m(v_1\to v_3)=1\times 2=2\ (\text{fork 증폭}),\quad m(v_2\to v_3)=2,\quad m(v_4\to v_3)=4$$
+
+<p>같은 보낸이라도 엣지 종류에 따라 메시지가 달라진다. provenance식으로 읽으면, <code>bash→shadow</code> 메시지는 "bash의 정체 벡터가 read라는 행위로 변조되어 shadow로 흘러간 것"이다. \(K\)층을 쌓으면 공격 체인이 임베딩에 스며든다 — 이게 <strong>PIDS가 노드 임베딩만으로 이상 탐지가 가능한 이유</strong>다.</p>
+
+<p>한 가지 오해만 정리. 파라미터는 모든 엣지가 공유한다. 엣지마다 다른 건 <em>입력</em>이지 <em>함수</em>가 아니다. 이 공유가 inductive의 근원이다.</p>
+
+<h2 id="s5"><span class="no">5</span>학습 패러다임 — 교과서와 현장이 갈리는 곳</h2>
+<p>여기서 논문과 내 연구가 정면으로 갈린다. 교과서(정확히는 GCN 원논문)는 <strong>semi-supervised</strong>다. 논문 제목부터 "Semi-Supervised Classification with GCN". Cora는 2,708 노드 중 라벨을 <strong>140개</strong>(클래스당 20개)만 쓰고, 구조·특징은 전부 노출한다(transductive). 라벨이 그래프를 타고 번진다.</p>
+
+<p>GCN이 이 판을 어떻게 정리했는지는 숫자가 말한다.</p>
+
+<div class="tbl-wrap">
+<table>
+  <tr><th>Method</th><th>Citeseer</th><th>Cora</th><th>Pubmed</th><th>NELL</th></tr>
+  <tr><td>Planetoid*</td><td>64.7</td><td>75.7</td><td>77.2</td><td>61.9</td></tr>
+  <tr class="hl-row"><td>GCN (원논문)</td><td class="hl">70.3</td><td class="hl">81.5</td><td class="hl">79.0</td><td class="hl">66.0</td></tr>
+  <tr><td>GAT (자식 세대)</td><td>72.5</td><td>83.0</td><td>79.0</td><td>—</td></tr>
+</table>
+</div>
+
+<p>GCN이 4개 전부 SOTA를 갱신했고, Cora에서 Planetoid 대비 +5.8%p. 이 정확도를 만든 심장이 <strong>renormalization trick</strong> — self-loop를 인접행렬에 넣고(\(\tilde{A}=A+I_N\)) 결합 차수로 대칭 정규화한 \(\hat{A}=\tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}\)이다. 스펙트럴 컨볼루션을 Chebyshev \(K=1\)로 선형화해 얻는 유도 전체는 <a href="gcn-spectral-graph-convolution.html">GCN 스펙트럴 유도 글</a>에, 식(1)에서 GCN으로 가는 Q&amp;A는 <a href="gcn-eq1-qa-note.html">여기</a>에 있다.</p>
+
+<p>그런데 <strong>보안 도메인에서는 semi-supervised가 거의 막힌다.</strong> 이유가 세 겹이다.</p>
+
+<ul>
+  <li>공격 라벨이 희소하다 (ORTHRUS ground truth가 41~123 노드).</li>
+  <li>라벨링이 전문가 작업이라 비싸고 부정확하다 (2-hop 팽창이 그 부작용).</li>
+  <li>애초에 <strong>본 적 없는 공격</strong>을 잡아야 한다.</li>
+</ul>
+
+<p>그래서 현장의 대안은 <strong>자기지도 + 이상탐지</strong>다. 정상 로그만으로 "정상"을 학습하고, 그로부터의 이탈을 이상으로 판정한다. 공격 라벨은 학습에 아예 안 쓴다. 레시피가 네 갈래로 정리됐다.</p>
+
+<ul>
+  <li><strong>마스킹 복원</strong> — MAGIC의 masked graph autoencoder</li>
+  <li><strong>구조 복원 GAE</strong> — SIGL의 Graph-LSTM AE</li>
+  <li><strong>엣지 예측</strong> — Kairos의 시간 윈도우 재구성 오차</li>
+  <li><strong>이웃 대비(contrastive)</strong> — GraphSAGE 비지도</li>
+</ul>
+
+<p>여담이지만 서베이 GNN 비교표에서 GraphSAGE만 비지도 micro-F1 0.502로 따로 노는 이유가 이거다 — 아예 다른 학습 방식이라 같은 표에서 대소 비교하면 안 된다. MAGIC의 실제 학습 루프는 정상 로그를 마스킹→GAT 복원→오차 최소화로 도는데, 재현했을 때 loss가 <strong>0.3186→0.0916</strong>으로 떨어지는 게 그 손실이다. 대가도 분명하다 — "이탈=공격" 가정이라 드문 정상 행위를 오탐하고, drift에 취약하며(Kairos 자인), 평가에는 여전히 라벨이 필요해서 평가용 라벨 부실이 곧 평가 위기가 된다.</p>
+
+<h2 id="s6"><span class="no">6</span>밑바닥 실습으로 굳히기 — PyG 없이 순정 PyTorch</h2>
+<p>머리로 안다고 착각하기 쉬워서, 노트의 running example 수치를 <strong>코드가 재현하면 PASS</strong>로 채점하는 실습을 만들었다. PyG 없이 순정 PyTorch만. 내장 assert가 노트와 코드의 일치를 검사한다.</p>
+
+<div class="tbl-wrap">
+<table>
+  <tr><th>파일</th><th>주제</th><th>검증 수치</th></tr>
+  <tr><td><code>01_message_passing.py</code></td><td>mean 집계·K-hop 릴레이·순열 불변</td><td>\(v_3\) 집계 2.3333, \(v_4\) 2-hop 수용 영역</td></tr>
+  <tr><td><code>02_gcn.py</code></td><td>대칭 정규화·renormalization·허브 억제</td><td>\(\hat{A}[v_3,v_4]\)=0.354, \(\hat{A}[v_3,v_1]\)=0.289, 자기루프 0.25</td></tr>
+  <tr><td><code>03_sage_gat_gin.py</code></td><td>SAGE(샘플+concat)·GAT(\(\alpha\))·GIN(sum+\(\epsilon\))</td><td>{2,2,2} vs {2} 반례, \(\alpha\) 합=1</td></tr>
+  <tr><td><code>04_cora_gcn.py</code></td><td>semi-supervised 노드 분류 (라벨 140개)</td><td>test 정확도 &gt; 0.75</td></tr>
+</table>
+</div>
+
+<p>04번 해답 실행 결과는 <strong>test 정확도 0.796</strong>(random split)이었다. 원논문 Planetoid split의 81.5에는 못 미치는데, split이 다르니 당연하다 — 그리고 이 격차 자체가 "고정 split vs random split 괴리"라는 GCN 논문의 재현성 이슈를 몸으로 확인시켜 준 셈이다. 지금 01·02번을 직접 풀이하는 중이고, 손계산이 그대로 assert를 통과하는 순간이 공부가 코드로 굳는 지점이다.</p>
+
+<h2 id="s7"><span class="no">7</span>남은 것 — 사슬은 아직 안 끝났다</h2>
+<p>복기해 보니 뼈대는 섰지만 사슬의 끝은 열려 있다. 미래의 내가 이어야 할 매듭들.</p>
+
+<p><strong>엣지 특징 \(e_{uv}\)가 기본 4모델엔 자리가 없다.</strong> GCN·SAGE·GAT·GIN의 메시지 식에는 \(e_{uv}\)를 넣을 칸이 없다. 그런데 <code>bash→/etc/shadow</code>가 read(크리덴셜 덤핑 의심)냐 stat(정상)이냐는 노드·구조가 같고 <strong>엣지 특징만이 구별</strong>한다. 그래서 시스템콜 타입을 살리려면 MPNN 계열로 가야 한다.</p>
+
+$$m_v^{(k)} = \sum_{u\in N(v)} M\!\left(h_v^{(k-1)}, h_u^{(k-1)}, e_{uv}\right),\qquad h_v^{(k)} = U\!\left(h_v^{(k-1)}, m_v^{(k)}\right)$$
+
+<p>여기 \(M\) 안에 \(e_{uv}\) 자리가 있다. <strong>MPNN concat</strong>(\(m=\text{MLP}([h_u \| e_{uv}])\)), <strong>edge-network</strong>(\(m=A(e_{uv})h_u\), 엣지 특징으로 변환 행렬 자체를 생성), <strong>R-GCN</strong>(\(m=\frac{1}{c_{v,r}}W_r h_u\), 엣지 타입별 행렬) — PIDS들이 백본을 변형하는 이유가 전부 이 한 칸 때문이다. 다음 실습은 mini provenance 그래프(방향 + 시스템콜 타입 엣지)로 이걸 굴려 보는 것.</p>
+
+<details>
+  <summary>아직 못 답한 셀프 퀴즈 6문항</summary>
+  <p>세션에서 미답으로 남겨 둔 것들 — 이제 코드 근거를 들어 답할 수 있어야 한다.</p>
+  <ol>
+    <li>\(v_4\)에 \(v_1\) 정보가 닿는 최소 레이어 수와 경로는?</li>
+    <li>GCN에서 \(\tilde{A}=A+I\) 자기루프의 이유는?</li>
+    <li>provenance 노드 이상탐지에 SAGE·GAT·GIN 중 선택 + inductive가 협상 불가인 이유는?</li>
+    <li>GAT \(\alpha\) 식의 어디에 \(e_{uv}\)를 넣으면 엣지 반영 어텐션이 되는가?</li>
+    <li>2-레이어 GCN + 입력 임베딩 + 출력 헤드의 학습 파라미터 덩어리 수는?</li>
+    <li>MAGIC의 benign 포이즌 취약점이 생기는 파이프라인 지점은?</li>
+  </ol>
+</details>
+
+<p>돌아보면 이 모든 게 맨 위의 <strong>한 식</strong>에서 갈라져 나왔다. 집계와 갱신, 그 빈칸을 무엇으로 채우느냐가 모델을 만들고, 라벨을 쓰느냐 마느냐가 패러다임을 가르고, 엣지에 \(e_{uv}\) 칸이 있느냐가 provenance로 가는 문을 연다. 다음 걸음은 명확하다 — MPNN 계열로 엣지 특징을 살리고, MAGIC 스타일 자기지도 이상탐지를 흉내 내는 것. 사슬의 그다음 고리는 거기서 이어진다.</p>
+
+<div class="post-nav">
+  <div class="prev">
+    <span class="dir">← 이전 글</span>
+    <a href="gcn-eq1-qa-note.html">식 (1)에서 GCN까지 — 그래프 준지도학습 Q&amp;A 노트</a>
+  </div>
+</div>
+
+  </article>
+</main>
+<footer class="site-footer">
+  <span>© songhyun9999</span>
+  <a href="../archive.html">← 전체 글</a>
+</footer>
+</body>
+</html>

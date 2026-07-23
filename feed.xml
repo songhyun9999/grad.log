@@ -8,6 +8,13 @@
   <atom:link href="https://songhyun9999.github.io/grad.log/feed.xml" rel="self" type="application/rss+xml"/>
   <!-- items:start (새 글은 이 줄 바로 아래에 추가, 최신이 위) -->
   <item>
+    <title>GNN 공부 총정리 — 한 식에서 밑바닥 실습까지</title>
+    <link>https://songhyun9999.github.io/grad.log/posts/gnn-study-roundup.html</link>
+    <guid>https://songhyun9999.github.io/grad.log/posts/gnn-study-roundup.html</guid>
+    <pubDate>Thu, 23 Jul 2026 12:00:00 +0900</pubDate>
+    <description>GNN 공부 산출물 4종(기초 Q&amp;A 8문답, Wu 2021 서베이 digest, GCN 원논문 digest, 순정 PyTorch 밑바닥 실습)을 메시지 패싱 한 식에서 갈라지는 하나의 사슬로 꿴 총정리.</description>
+  </item>
+  <item>
     <title>식 (1)에서 GCN까지 — 그래프 준지도학습 Q&amp;A 노트</title>
     <link>https://songhyun9999.github.io/grad.log/posts/gcn-eq1-qa-note.html</link>
     <guid>https://songhyun9999.github.io/grad.log/posts/gcn-eq1-qa-note.html</guid>
